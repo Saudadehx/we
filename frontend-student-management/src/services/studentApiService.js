@@ -1,47 +1,27 @@
 import axios from 'axios';
 
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+const API_URL = 'http://localhost:8080/api/students'; // 这是你后端API的基础地址
 
-// Optional: Add request interceptor (e.g., for auth tokens)
-// apiClient.interceptors.request.use(config => {
-//   const token = localStorage.getItem('user-token');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// }, error => Promise.reject(error));
-
-// Optional: Add response interceptor (e.g., for global error handling)
-// apiClient.interceptors.response.use(response => response, error => {
-//   if (error.response && error.response.status === 401) {
-//     // Assuming router is available or imported separately for navigation
-//     // router.push('/login');
-//   }
-//   return Promise.reject(error);
-// });
-
-export default {
+const studentApiService = {
   getAllStudents() {
-    return apiClient.get('/students');
+    return axios.get(API_URL);
   },
+
   getStudentById(id) {
-    return apiClient.get(`/students/${id}`);
+    return axios.get(`${API_URL}/${id}`);
   },
-  getStudentByStudentId(studentId) {
-    return apiClient.get(`/students/by-studentid/${studentId}`);
-  },
+
   createStudent(studentData) {
-    return apiClient.post('/students', studentData);
+    return axios.post(API_URL, studentData);
   },
+
   updateStudent(id, studentData) {
-    return apiClient.put(`/students/${id}`, studentData);
+    return axios.put(`${API_URL}/${id}`, studentData);
   },
+
   deleteStudent(id) {
-    return apiClient.delete(`/students/${id}`);
+    return axios.delete(`${API_URL}/${id}`);
   }
 };
+
+export default studentApiService;

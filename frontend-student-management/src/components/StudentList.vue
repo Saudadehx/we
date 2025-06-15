@@ -2,106 +2,101 @@
   <div class="student-list-container">
     <h2>学生列表</h2>
     <button @click="goToAddStudent" class="add-student-btn">添加新学生</button>
+
     <div v-if="loading" class="loading">加载中...</div>
+
     <div v-if="error" class="error-message">{{ error }}</div>
+
     <table v-if="!loading && students.length > 0">
       <thead>
-        <tr>
-          <th>学号</th>
-          <th>姓名</th>
-          <th>性别</th>
-          <th>出生日期</th>
-          <th>班级</th>
-          <th>操作</th>
-        </tr>
+      <tr>
+        <th>学号</th>
+        <th>姓名</th>
+        <th>性别</th>
+        <th>出生日期</th>
+        <th>班级</th>
+        <th>操作</th>
+      </tr>
       </thead>
       <tbody>
-        <tr v-for="student in students" :key="student.id">
-          <td>{{ student.studentId }}</td>
-          <td>{{ student.name }}</td>
-          <td>{{ student.gender }}</td>
-          <td>{{ student.dateOfBirth }}</td>
-          <td>{{ student.className }}</td>
-          <td>
-            <button @click="editStudent(student.id)" class="action-btn edit-btn">编辑</button>
-            <button @click="confirmDeleteStudent(student.id)" class="action-btn delete-btn">删除</button>
-          </td>
-        </tr>
+      <tr v-for="student in students" :key="student.id">
+        <td>{{ student.studentId }}</td>
+        <td>{{ student.name }}</td>
+        <td>{{ student.gender }}</td>
+        <td>{{ student.dateOfBirth }}</td>
+        <td>{{ student.className }}</td>
+        <td>
+          <button @click="editStudent(student.id)" class="action-btn edit-btn">编辑</button>
+          <button @click="confirmDeleteStudent(student.id)" class="action-btn delete-btn">删除</button>
+        </td>
+      </tr>
       </tbody>
     </table>
-    <p v-if="!loading && students.length === 0 && !error">暂无学生信息。</p>
+
+    <p v-if="!loading && students.length === 0 && !error">暂无学生信息，请先添加。</p>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import studentApiService from '@/services/studentApiService'; // 稍后创建
+import studentApiService from '@/services/studentApiService'; // 引入真实的API服务
 
 const students = ref([]);
 const loading = ref(true);
 const error = ref('');
 const router = useRouter();
 
-// 模拟API调用，实际应替换为 studentApiService
+/**
+ * 从后端获取学生列表
+ */
 const fetchStudents = async () => {
-loading.value = true;
-    error.value = '';
-    try {
-      const response = await studentApiService.getAllStudents();
-      students.value = response.data;
-      if (students.value.length === 0) {
-        console.log("No students fetched from API.");
-      }
-    } catch (err) {
-      console.error('获取学生列表失败:', err);
-      error.value = err.response?.data?.message || err.message || '获取学生列表失败，请稍后再试。';
-    } finally {
-      loading.value = false;
-    }
-      // { id: 1, studentId: 'S1001', name: '张三', gender: '男', dateOfBirth: '2000-01-15', className: '计算机科学1班' },
-      // { id: 2, studentId: 'S1002', name: '李四', gender: '女', dateOfBirth: '2001-03-20', className: '软件工程2班' }
-    ];
-    if (students.value.length === 0) {
-        console.log("No students fetched (using placeholder).");
-    }
+  loading.value = true;
+  error.value = '';
+  try {
+    const response = await studentApiService.getAllStudents();
+    students.value = response.data;
   } catch (err) {
     console.error('获取学生列表失败:', err);
-    error.value = '获取学生列表失败，请稍后再试。';
+    error.value = '获取学生列表失败，请确保后端服务正在运行。';
   } finally {
     loading.value = false;
   }
 };
 
+// 组件加载时自动获取数据
 onMounted(() => {
   fetchStudents();
 });
 
+/**
+ * 跳转到添加学生页面
+ */
 const goToAddStudent = () => {
-  router.push('/students/new'); // 路由将在下一步配置
+  router.push('/students/new');
 };
 
+/**
+ * 跳转到编辑学生页面
+ * @param {number} id - 学生ID
+ */
 const editStudent = (id) => {
-  router.push(); // 路由将在下一步配置
+  router.push(`/students/edit/${id}`);
 };
 
+/**
+ * 确认并删除学生
+ * @param {number} id - 学生ID
+ */
 const confirmDeleteStudent = async (id) => {
-if (window.confirm('确定要删除该学生吗？')) {
-      loading.value = true;
-      error.value = '';
-      try {
-        await studentApiService.deleteStudent(id);
-        await fetchStudents();
-      } catch (err) {
-        console.error('删除学生失败:', err);
-        error.value = err.response?.data?.message || err.message || '删除学生失败。';
-      } finally {
-        loading.value = false;
-      }
-    }
+  if (window.confirm('您确定要删除该学生吗？此操作不可撤销。')) {
+    try {
+      await studentApiService.deleteStudent(id);
+      // 删除成功后，重新加载列表以刷新界面
+      await fetchStudents();
     } catch (err) {
       console.error('删除学生失败:', err);
-      error.value = '删除学生失败。';
+      error.value = '删除学生失败，请稍后再试。';
     }
   }
 };
@@ -111,6 +106,8 @@ if (window.confirm('确定要删除该学生吗？')) {
 .student-list-container {
   padding: 20px;
   font-family: Arial, sans-serif;
+  max-width: 1000px;
+  margin: 20px auto;
 }
 .add-student-btn {
   margin-bottom: 15px;
@@ -120,6 +117,7 @@ if (window.confirm('确定要删除该学生吗？')) {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 16px;
 }
 .add-student-btn:hover {
   background-color: #45a049;
@@ -127,14 +125,18 @@ if (window.confirm('确定要删除该学生吗？')) {
 table {
   width: 100%;
   border-collapse: collapse;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 th, td {
   border: 1px solid #ddd;
-  padding: 8px;
+  padding: 12px;
   text-align: left;
 }
 th {
   background-color: #f2f2f2;
+}
+tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 .action-btn {
   margin-right: 5px;
@@ -154,8 +156,14 @@ th {
 .loading, .error-message {
   margin-top: 20px;
   font-style: italic;
+  text-align: center;
+  font-size: 18px;
 }
 .error-message {
   color: red;
+  padding: 10px;
+  border: 1px solid red;
+  background-color: #ffebee;
+  border-radius: 4px;
 }
 </style>
