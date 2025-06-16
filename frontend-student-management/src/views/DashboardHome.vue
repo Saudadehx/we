@@ -66,7 +66,7 @@ const stats = ref({ totalStudents: 0, totalClasses: 0, totalGrades: 0, totalMajo
 onMounted(async () => {
   try {
     const response = await studentService.getStats();
-    stats.value = response.data;
+    stats.value = response;
   } catch (error) {
     console.error("获取统计数据失败:", error);
   }

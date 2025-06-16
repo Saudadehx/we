@@ -24,18 +24,20 @@
 <script setup>
 import Notification from '@/components/Notification.vue';
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { isLoggedIn } from '@/services/authStore';
-import { authService } from '@/services/apiService';
+import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth'; // 1. 导入 store
 
-const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore(); // 2. 获取 store 实例
 
 const isLoginPage = computed(() => route.name === 'Login');
 
+// 3. 从 store 的 getter 直接获取登录状态
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+
+// 4. 从 store 的 action 获取登出方法
 const logout = () => {
-  authService.logout();
-  router.push('/login');
+  authStore.logout();
 };
 </script>
 

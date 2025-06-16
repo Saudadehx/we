@@ -1,47 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '@/views/Login.vue';
 import StudentDashboard from '@/views/StudentDashboard.vue'; // 确保引入的是 StudentDashboard
-import StudentForm from '@/components/StudentForm.vue';
 import DashboardHome from '@/views/DashboardHome.vue';
+
 const routes = [
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/', redirect: '/dashboard' },
   {
-    path: '/login',
-    name: 'Login',
-    component: Login
-  },
-  {
-    path: '/',
-    redirect: '/students'
-  },
-  {
-    path: '/',
-    redirect: '/dashboard' // 重定向到新的主页
-  },
-  {
-    path: '/dashboard', // 新增主页路由
+    path: '/dashboard',
     name: 'DashboardHome',
     component: DashboardHome,
     meta: { requiresAuth: true }
   },
   {
     path: '/students',
-    name: 'StudentDashboard', // 路由名称
-    component: StudentDashboard, // 路由组件
+    name: 'StudentDashboard',
+    component: StudentDashboard,
     meta: { requiresAuth: true }
   },
-  {
-    path: '/students/new',
-    name: 'StudentAdd',
-    component: StudentForm,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/students/edit/:id',
-    name: 'StudentEdit',
-    component: StudentForm,
-    props: true,
-    meta: { requiresAuth: true }
-  },
+  // ✨ 修正点：确保这里没有 /students/new 和 /students/edit/:id 的路由了
 ];
 
 const router = createRouter({

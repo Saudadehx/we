@@ -23,20 +23,18 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { authService } from '@/services/apiService';
+import { useAuthStore } from '@/stores/auth'; // 1. 导入store
 
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
-const router = useRouter();
+const authStore = useAuthStore(); // 2. 获取 store 实例
 
 const handleLogin = async () => {
   errorMessage.value = '';
-  try {
-    await authService.login(username.value, password.value);
-    await router.push('/dashboard');
-  } catch (error) {
+  // 3. 直接调用 store 的 login action
+  const success = await authStore.login(username.value, password.value);
+  if (!success) {
     errorMessage.value = '登录失败，请检查用户名或密码。';
   }
 };
