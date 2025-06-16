@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.StudentMapper">
+
+    <resultMap id="StudentResultMap" type="Student">
+        <id property="id" column="id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="dateOfBirth" column="date_of_birth"/>
+        <result property="className" column="class_name"/>
+        <result property="major" column="majors"/>
+        <result property="gpa" column="gpa"/>
+        <result property="photoUrl" column="photo_url"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="StudentResultMap">
+        SELECT * FROM students
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="StudentResultMap">
+        SELECT * FROM students WHERE id = #{id}
+    </select>
+
+    <select id="findByStudentId" parameterType="string" resultMap="StudentResultMap">
+        SELECT * FROM students WHERE student_id = #{studentId}
+    </select>
+
+    <insert id="insert" parameterType="Student">
+        INSERT INTO students (student_id, name, gender, date_of_birth, class_name, majors, gpa, photo_url)
+        VALUES (#{studentId}, #{name}, #{gender}, #{dateOfBirth}, #{className}, #{major}, #{gpa}, #{photoUrl})
+    </insert>
+
+    <update id="update" parameterType="Student">
+        UPDATE students
+        SET student_id = #{studentId}, name = #{name}, gender = #{gender}, date_of_birth = #{dateOfBirth},
+            class_name = #{className}, majors = #{major}, gpa = #{gpa}, photo_url = #{photoUrl}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM students WHERE id = #{id}
+    </delete>
+</mapper>
