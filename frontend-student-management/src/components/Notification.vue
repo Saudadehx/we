@@ -34,5 +34,6 @@ import { notification } from '@/services/notificationStore.js';
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: translate(-50%, -20px);
 }
 </style>

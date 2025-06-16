@@ -115,11 +115,12 @@ const saveChanges = async () => {
     if (props.isCreating) {
       const response = await studentService.createStudent(editableStudent.value);
       emit('student-created', response.data);
-      showNotification('学生创建成功！', 'success');
+      showNotification('学生创建完成！', 'success');
     } else {
       await studentService.updateStudent(props.student.id, editableStudent.value);
+      isEditing.value = false;
       emit('student-updated');
-      showNotification('更新成功！', 'success');
+      showNotification('保存完成！', 'success');
     }
   } catch (error) {
     if (error.response && error.response.data) {

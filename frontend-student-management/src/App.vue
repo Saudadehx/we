@@ -1,5 +1,6 @@
 <template>
   <div id="app-container">
+    <Notification />
     <header class="app-header" v-if="!isLoginPage">
       <div class="header-left">
         <div class="logo">
@@ -21,6 +22,7 @@
 </template>
 
 <script setup>
+import Notification from '@/components/Notification.vue';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { isLoggedIn } from '@/services/authStore';
