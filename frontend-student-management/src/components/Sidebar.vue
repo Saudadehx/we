@@ -37,6 +37,12 @@
         <router-link to="/student/courses">
           <span>&#128214;</span> 我的课程
         </router-link>
+        <router-link to="/student/available-courses">
+          <span>&#128218;</span> 选课中心
+        </router-link>
+        <router-link to="/student/timetable">
+          <span>&#128197;</span> 我的课表
+        </router-link>
       </template>
     </nav>
 
@@ -59,7 +65,6 @@ const username = computed(() => {
   if (!authStore.token) return '访客';
   try {
     const decoded = jwtDecode(authStore.token);
-    // 'sub' 通常是JWT中的用户名（学号/工号）
     return decoded.sub || '用户';
   } catch (e) {
     return '用户';
@@ -78,6 +83,7 @@ const userRoleText = computed(() => {
 </script>
 
 <style scoped>
+/* 样式无需改动 */
 .sidebar-container {
   display: flex;
   flex-direction: column;

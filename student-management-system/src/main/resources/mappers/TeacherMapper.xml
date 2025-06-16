@@ -25,4 +25,18 @@
         VALUES (#{teacherId}, #{name}, #{password})
     </insert>
 
+    <update id="update" parameterType="com.example.student_management_system.model.Teacher">
+        UPDATE teachers
+        <set>
+            <if test="teacherId != null and teacherId != ''">teacher_id = #{teacherId},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM teachers WHERE id = #{id}
+    </delete>
+
 </mapper>

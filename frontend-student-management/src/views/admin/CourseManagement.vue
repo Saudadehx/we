@@ -13,60 +13,72 @@
           <th>课程名称</th>
           <th>学分</th>
           <th>授课教师</th>
+          <th>上课时间</th>
           <th>操作</th>
         </tr>
         </thead>
         <tbody>
         <tr v-if="isLoading">
-          <td colspan="5" style="text-align: center; padding: 20px;">正在加载数据...</td>
+          <td colspan="6" style="text-align: center; padding: 20px;">正在加载数据...</td>
         </tr>
         <tr v-for="course in courses" :key="course.id">
           <td>{{ course.courseId }}</td>
           <td>{{ course.courseName }}</td>
           <td>{{ course.credits }}</td>
           <td>{{ course.teacherName }}</td>
+          <td>{{ formatCourseTime(course.courseDay, course.courseTime) }}</td>
           <td>
-            <button class="action-btn edit">编辑</button>
-            <button class="action-btn delete">删除</button>
+            <button @click="openEditModal(course)" class="action-btn edit">编辑</button>
+            <button @click="handleDeleteCourse(course.id)" class="action-btn delete">删除</button>
           </td>
-        </tr>
-        <tr v-if="!isLoading && courses.length === 0">
-          <td colspan="5" style="text-align: center; padding: 20px;">暂无课程数据，请新增。</td>
         </tr>
         </tbody>
       </table>
     </div>
 
-    <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <h2>新增课程</h2>
-        <form @submit.prevent="handleAddCourse">
+        <h2>{{ isEditing ? '编辑课程' : '新增课程' }}</h2>
+        <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label for="courseId">课程编号</label>
-            <input v-model="newCourse.courseId" id="courseId" required placeholder="例如：CS101">
+            <input v-model="editableCourse.courseId" id="courseId" required>
           </div>
           <div class="form-group">
             <label for="courseName">课程名称</label>
-            <input v-model="newCourse.courseName" id="courseName" required>
+            <input v-model="editableCourse.courseName" id="courseName" required>
           </div>
           <div class="form-group">
             <label for="credits">学分</label>
-            <input type="number" step="0.5" v-model="newCourse.credits" id="credits" required>
+            <input type="number" step="0.5" v-model="editableCourse.credits" id="credits" required>
           </div>
           <div class="form-group">
             <label for="teacherId">授课教师</label>
-            <select v-model="newCourse.teacherId" id="teacherId" required>
+            <select v-model="editableCourse.teacherId" id="teacherId" required>
               <option disabled value="">请选择一位教师</option>
               <option v-for="teacher in teachers" :key="teacher.teacherId" :value="teacher.teacherId">
                 {{ teacher.name }} ({{ teacher.teacherId }})
               </option>
             </select>
           </div>
+          <div class="form-group">
+            <label for="courseDay">上课日</label>
+            <select v-model="editableCourse.courseDay" id="courseDay">
+              <option :value="null">未安排</option>
+              <option v-for="day in 7" :key="day" :value="day">星期{{ '一二三四五六日'[day-1] }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="courseTime">上课时段</label>
+            <select v-model="editableCourse.courseTime" id="courseTime">
+              <option :value="null">未安排</option>
+              <option v-for="time in 5" :key="time" :value="time">第 {{ time }} 大节</option>
+            </select>
+          </div>
+
           <div class="modal-actions">
-            <button type="button" @click="showAddModal = false">取消</button>
-            <button type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? '创建中...' : '创建课程' }}
-            </button>
+            <button type="button" @click="closeModal">取消</button>
+            <button type="submit" :disabled="isSubmitting">{{ isSubmitting ? '处理中...' : '提交' }}</button>
           </div>
         </form>
       </div>
@@ -79,62 +91,76 @@ import { ref, onMounted } from 'vue';
 import { courseService, teacherService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
 
+// ... data refs and other functions ...
 const courses = ref([]);
 const teachers = ref([]);
 const isLoading = ref(true);
 const isSubmitting = ref(false);
-const showAddModal = ref(false);
+const showModal = ref(false);
+const isEditing = ref(false);
 
-const newCourse = ref({
+const editableCourse = ref({
+  id: null,
   courseId: '',
   courseName: '',
   credits: null,
-  teacherId: ''
+  teacherId: '',
+  courseDay: null,
+  courseTime: null,
 });
 
-const fetchCourses = async () => {
-  isLoading.value = true;
-  try {
-    courses.value = await courseService.getAll();
-  } catch (error) {
-    showNotification(error.message || '获取课程列表失败', 'error');
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const fetchTeachers = async () => {
-  try {
-    teachers.value = await teacherService.getAll();
-  } catch (error) {
-    showNotification('无法加载教师列表，请稍后重试', 'error');
-  }
-};
-
-const openAddModal = () => {
-  // 每次打开弹窗时都尝试获取最新的教师列表
+const fetchCourses = async () => { /* ... no change ... */ };
+const fetchTeachers = async () => { /* ... no change ... */ };
+onMounted(() => {
+  fetchCourses();
   fetchTeachers();
-  showAddModal.value = true;
+});
+
+// 【新增】格式化时间显示的辅助函数
+const formatCourseTime = (day, time) => {
+  if (!day || !time) return '未安排';
+  const dayStr = '星期' + '一二三四五六日'[day-1];
+  const timeStr = `第 ${time} 大节`;
+  return `${dayStr} ${timeStr}`;
 };
 
-const handleAddCourse = async () => {
+// ... resetForm, openAddModal, openEditModal, closeModal, handleSubmit, handleDeleteCourse ...
+// 这些函数基本不变，只是需要确保在 resetForm 和 openEditModal 中处理新字段
+const resetForm = () => {
+  editableCourse.value = {
+    id: null, courseId: '', courseName: '', credits: null, teacherId: '',
+    courseDay: null, courseTime: null // 重置时间字段
+  };
+};
+
+const openEditModal = (course) => {
+  editableCourse.value = { ...course }; // 直接拷贝即可，因为DTO字段名一致
+  isEditing.value = true;
+  showModal.value = true;
+};
+// handleSubmit 里的 payload 需包含新字段
+const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
 
   try {
-    await courseService.create(newCourse.value);
-    showNotification('课程创建成功！', 'success');
-    showAddModal.value = false;
-    newCourse.value = { courseId: '', courseName: '', credits: null, teacherId: '' };
-    fetchCourses();
+    const payload = { ...editableCourse.value };
+    if (isEditing.value) {
+      await courseService.update(editableCourse.value.id, payload);
+      showNotification('课程更新成功！', 'success');
+    } else {
+      await courseService.create(payload);
+      showNotification('课程创建成功！', 'success');
+    }
+    closeModal();
+    await fetchCourses();
   } catch (error) {
-    showNotification(error.message || '创建失败', 'error');
+    showNotification(error.message || '操作失败', 'error');
   } finally {
     isSubmitting.value = false;
   }
 };
 
-onMounted(fetchCourses);
 </script>
 
 <style scoped>

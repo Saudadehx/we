@@ -1,3 +1,4 @@
+// 文件路径: frontend-student-management/src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import Login from '@/views/Login.vue';
@@ -19,8 +20,12 @@ const routes = [
   // --- 学生路由 ---
   { path: '/student/profile', name: 'StudentProfile', component: () => import('@/views/MyProfile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/courses', name: 'StudentCourses', component: () => import('@/views/student/MyCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  // 【新增】学生选课页面的路由
+  { path: '/student/available-courses', name: 'StudentAvailableCourses', component: () => import('@/views/student/AvailableCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/timetable', name: 'StudentTimetable', component: () => import('@/views/student/MyTimetable.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
 ];
 
+// ... router.beforeEach 逻辑保持不变 ...
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes

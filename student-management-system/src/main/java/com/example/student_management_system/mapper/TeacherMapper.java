@@ -33,6 +33,12 @@ public interface TeacherMapper {
      */
     void insert(Teacher teacher);
 
+    // 【新增】更新教师信息
+    int update(Teacher teacher);
+
+    // 【新增】根据ID删除教师
+    void deleteById(Long id);
+
 
     // 您可以根据需要添加 update 和 deleteById 方法
 }

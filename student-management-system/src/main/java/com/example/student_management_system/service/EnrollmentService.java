@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import java.util.Objects;
+import java.util.Set;
+
 @Service
 public class EnrollmentService {
 
@@ -88,9 +91,7 @@ public class EnrollmentService {
     }
 
     /**
-     * 学生获取自己的所有成绩
-     * @param studentId 当前登录学生的ID
-     * @return 成绩列表
+     * 【修改】学生获取自己的所有成绩，并附带课程时间信息
      */
     @Transactional(readOnly = true)
     public List<EnrollmentResponseDTO> getEnrollmentsForStudent(Long studentId) {
@@ -100,8 +101,7 @@ public class EnrollmentService {
         }
 
         List<Long> courseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
-        // 优化：仅查询相关的课程
-        List<Course> courses = courseMapper.findByIds(courseIds); // 假设CourseMapper有findByIds方法
+        List<Course> courses = courseMapper.findByIds(courseIds);
         Map<Long, Course> courseMap = courses.stream()
                 .collect(Collectors.toMap(Course::getId, Function.identity()));
 
@@ -114,44 +114,75 @@ public class EnrollmentService {
                 dto.setCourseName(course.getCourseName());
                 dto.setCourseId(course.getCourseId());
                 dto.setCredits(course.getCredits());
+                // 【新增】填充课程时间
+                dto.setCourseDay(course.getCourseDay());
+                dto.setCourseTime(course.getCourseTime());
             }
             return dto;
         }).collect(Collectors.toList());
     }
 
     /**
-     * [新增方法] 管理员为学生选课
+     * 【新增方法】学生为自己选课
+     * @param courseId 要选修课程的数据库ID
+     * @param studentId 当前登录学生的数据库ID
+     * @return 创建的选课记录
+     */
+    @Transactional
+    public Enrollment enrollCourseForStudent(Long courseId, Long studentId) {
+        Course targetCourse = courseMapper.findById(courseId);
+        if (targetCourse == null) {
+            throw new ResourceNotFoundException("ID为 " + courseId + " 的课程不存在。");
+        }
+
+        // --- 时间冲突检测逻辑 ---
+        // 1. 获取该生已选的所有课程
+        List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentId);
+        if (!enrollments.isEmpty()) {
+            List<Long> enrolledCourseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
+            List<Course> enrolledCourses = courseMapper.findByIds(enrolledCourseIds);
+
+            // 2. 检查时间是否冲突
+            for (Course enrolledCourse : enrolledCourses) {
+                if (Objects.equals(enrolledCourse.getCourseDay(), targetCourse.getCourseDay()) &&
+                        Objects.equals(enrolledCourse.getCourseTime(), targetCourse.getCourseTime())) {
+                    // 如果星期和时间段都相同，则判定为冲突
+                    throw new IllegalArgumentException("选课失败：与已选课程 '" + enrolledCourse.getCourseName() + "' 时间冲突。");
+                }
+            }
+        }
+
+        // --- 原有逻辑 ---
+        Enrollment enrollment = new Enrollment();
+        enrollment.setStudentId(studentId);
+        enrollment.setCourseId(courseId);
+        enrollment.setScore(null);
+
+        try {
+            enrollmentMapper.insert(enrollment);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
+        }
+        return enrollment;
+    }
+
+    /**
+     * [管理员方法] 管理员为学生选课
      * @param enrollmentDTO 包含学生学号和课程编号
      * @return 创建的选课记录
      */
     @Transactional
     public Enrollment createEnrollment(EnrollmentDTO enrollmentDTO) {
-        // 1. 根据前端传来的学号，查找学生实体以获取其数据库ID
         Student student = studentMapper.findByStudentId(enrollmentDTO.getStudentId());
         if (student == null) {
             throw new ResourceNotFoundException("学号为 " + enrollmentDTO.getStudentId() + " 的学生不存在。");
         }
 
-        // 2. 根据前端传来的课程编号，查找课程实体以获取其数据库ID
         Course course = courseMapper.findByCourseId(enrollmentDTO.getCourseId());
         if (course == null) {
             throw new ResourceNotFoundException("课程编号为 " + enrollmentDTO.getCourseId() + " 的课程不存在。");
         }
 
-        // 3. 创建一个新的Enrollment实体
-        Enrollment enrollment = new Enrollment();
-        enrollment.setStudentId(student.getId());
-        enrollment.setCourseId(course.getId());
-        enrollment.setScore(null); // 初始成绩为空
-
-        // 4. 插入数据库，并处理可能发生的重复选课错误
-        try {
-            enrollmentMapper.insert(enrollment);
-        } catch (DataIntegrityViolationException e) {
-            // 这个异常通常是因为违反了数据库的唯一性约束 (uk_student_course)
-            throw new IllegalArgumentException("该学生已选修此课程，请勿重复分配。");
-        }
-
-        return enrollment;
+        return enrollCourseForStudent(course.getId(), student.getId());
     }
 }

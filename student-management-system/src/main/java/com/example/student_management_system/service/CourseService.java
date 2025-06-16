@@ -1,3 +1,4 @@
+// 文件路径: student-management-system/src/main/java/com/example/student_management_system/service/CourseService.java
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.CourseDTO;
@@ -13,10 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.Function; // 【修复】导入 Function 包
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class CourseService {
 
     @Autowired
@@ -24,19 +26,15 @@ public class CourseService {
     @Autowired
     private TeacherMapper teacherMapper;
 
-    /**
-     * 获取所有课程列表，并附带教师姓名。
-     * @return 包含教师姓名的课程列表
-     */
     @Transactional(readOnly = true)
-    public List<CourseResponseDTO> getAllCoursesWithTeacherName() {
-        List<Course> courses = courseMapper.findAll();
+    public List<CourseResponseDTO> getAllCoursesWithTeacherName(Map<String, Object> params) {
+        List<Course> courses = courseMapper.findAll(params);
         if (courses.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 为了高效查找，一次性获取所有教师，并转为 Map<ID, Teacher>
         List<Teacher> teachers = teacherMapper.findAll();
+        // 【修复】将 Teacher::itself 替换为 Function.identity()
         Map<Long, Teacher> teacherMap = teachers.stream()
                 .collect(Collectors.toMap(Teacher::getId, Function.identity()));
 
@@ -46,21 +44,16 @@ public class CourseService {
             dto.setCourseId(course.getCourseId());
             dto.setCourseName(course.getCourseName());
             dto.setCredits(course.getCredits());
-            // 从Map中安全地获取教师姓名
+            dto.setCourseDay(course.getCourseDay());
+            dto.setCourseTime(course.getCourseTime());
+
             Teacher teacher = teacherMap.get(course.getTeacherId());
             dto.setTeacherName(teacher != null ? teacher.getName() : "未知教师");
+            dto.setTeacherId(teacher != null ? teacher.getTeacherId() : null);
             return dto;
         }).collect(Collectors.toList());
     }
-
-    /**
-     * 管理员创建新课程。
-     * @param courseDTO 包含课程信息和教师工号的DTO
-     * @return 创建后的课程信息
-     */
-    @Transactional
     public Course createCourse(CourseDTO courseDTO) {
-        // 业务逻辑：根据教师工号找到教师的数据库ID
         Teacher teacher = teacherMapper.findByTeacherId(courseDTO.getTeacherId());
         if (teacher == null) {
             throw new ResourceNotFoundException("工号为 " + courseDTO.getTeacherId() + " 的教师不存在。");
@@ -70,23 +63,18 @@ public class CourseService {
         course.setCourseId(courseDTO.getCourseId());
         course.setCourseName(courseDTO.getCourseName());
         course.setCredits(courseDTO.getCredits());
-        course.setTeacherId(teacher.getId()); // 存入教师的数据库ID
+        course.setTeacherId(teacher.getId());
+        course.setCourseDay(courseDTO.getCourseDay());
+        course.setCourseTime(courseDTO.getCourseTime());
 
         courseMapper.insert(course);
         return course;
     }
-    // ... 在 CourseService.java 中 ...
 
-    /**
-     * 根据教师的数据库ID获取其教授的所有课程
-     * @param teacherId 教师的数据库ID
-     * @return 课程列表
-     */
     @Transactional(readOnly = true)
     public List<CourseResponseDTO> findCoursesByTeacherId(Long teacherId) {
         List<Course> courses = courseMapper.findByTeacherId(teacherId);
-        // 这里我们不需要再查教师信息，因为就是当前教师
-        Teacher teacher = teacherMapper.findById(teacherId); // 假设TeacherMapper已有findById
+        Teacher teacher = teacherMapper.findById(teacherId);
 
         return courses.stream().map(course -> {
             CourseResponseDTO dto = new CourseResponseDTO();
@@ -101,7 +89,6 @@ public class CourseService {
         }).collect(Collectors.toList());
     }
 
-    @Transactional
     public Course updateCourse(Long courseId, CourseDTO courseDTO) {
         Course existingCourse = courseMapper.findById(courseId);
         if (existingCourse == null) {
@@ -117,9 +104,17 @@ public class CourseService {
         existingCourse.setCourseName(courseDTO.getCourseName());
         existingCourse.setCredits(courseDTO.getCredits());
         existingCourse.setTeacherId(teacher.getId());
+        existingCourse.setCourseDay(courseDTO.getCourseDay());
+        existingCourse.setCourseTime(courseDTO.getCourseTime());
 
         courseMapper.update(existingCourse);
         return existingCourse;
     }
-    // 此处可以添加更新和删除课程的逻辑
+
+    public void deleteCourse(Long id) {
+        if (courseMapper.findById(id) == null) {
+            throw new ResourceNotFoundException("ID为 " + id + " 的课程不存在，无法删除。");
+        }
+        courseMapper.deleteById(id);
+    }
 }

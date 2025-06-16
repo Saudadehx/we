@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api") // 使用一个通用的API前缀
@@ -66,6 +67,24 @@ public class EnrollmentController {
         return ApiResult.success(enrollmentService.getEnrollmentsForStudent(student.getId()));
     }
 
+    /**
+     * 【新增】学生选课接口
+     * @param student 当前登录的学生
+     * @param payload 请求体，需要包含 courseId
+     * @return 创建的选课记录
+     */
+    @PostMapping("/students/me/enrollments")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResult<Enrollment> enrollInCourse(
+            @AuthenticationPrincipal Student student,
+            @RequestBody Map<String, Long> payload
+    ) {
+        Long courseId = payload.get("courseId");
+        if (courseId == null) {
+            throw new IllegalArgumentException("请求体中必须包含 courseId。");
+        }
+        return ApiResult.success(enrollmentService.enrollCourseForStudent(courseId, student.getId()));
+    }
     // --- 供管理员使用的接口 ---
 
     /**

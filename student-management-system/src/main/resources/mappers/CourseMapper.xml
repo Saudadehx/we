@@ -8,39 +8,61 @@
         <result property="courseName" column="course_name"/>
         <result property="credits" column="credits"/>
         <result property="teacherId" column="teacher_id"/>
+        <result property="courseDay" column="course_day"/>
+        <result property="courseTime" column="course_time"/>
     </resultMap>
 
     <select id="findById" parameterType="long" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id FROM courses WHERE id = #{id}
+        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE id = #{id}
     </select>
 
     <select id="findByCourseId" parameterType="string" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id FROM courses WHERE course_id = #{courseId}
+        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE course_id = #{courseId}
     </select>
 
     <select id="findByIds" parameterType="java.util.List" resultMap="CourseResultMap">
-        SELECT * FROM courses
+        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses
         WHERE id IN
         <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
             #{item}
         </foreach>
     </select>
-    <select id="findAll" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id FROM courses ORDER BY course_id
+
+    <select id="findAll" parameterType="map" resultMap="CourseResultMap">
+        SELECT c.id, c.course_id, c.course_name, c.credits, c.teacher_id, c.course_day, c.course_time, t.name as teacher_name
+        FROM courses c
+        LEFT JOIN teachers t ON c.teacher_id = t.id
+        <where>
+            <if test="courseName != null and courseName != ''">
+                AND c.course_name LIKE CONCAT('%', #{courseName}, '%')
+            </if>
+            <if test="teacherName != null and teacherName != ''">
+                AND t.name LIKE CONCAT('%', #{teacherName}, '%')
+            </if>
+            <if test="courseId != null and courseId != ''">
+                AND c.course_id LIKE CONCAT('%', #{courseId}, '%')
+            </if>
+        </where>
+        ORDER BY c.course_id
     </select>
 
     <select id="findByTeacherId" parameterType="long" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id FROM courses WHERE teacher_id = #{teacherId}
+        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE teacher_id = #{teacherId}
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.Course">
-        INSERT INTO courses(course_id, course_name, credits, teacher_id)
-        VALUES(#{courseId}, #{courseName}, #{credits}, #{teacherId})
+        INSERT INTO courses(course_id, course_name, credits, teacher_id, course_day, course_time)
+        VALUES(#{courseId}, #{courseName}, #{credits}, #{teacherId}, #{courseDay}, #{courseTime})
     </insert>
 
     <update id="update" parameterType="com.example.student_management_system.model.Course">
         UPDATE courses
-        SET course_id = #{courseId}, course_name = #{courseName}, credits = #{credits}, teacher_id = #{teacherId}
+        SET course_id = #{courseId},
+        course_name = #{courseName},
+        credits = #{credits},
+        teacher_id = #{teacherId},
+        course_day = #{courseDay},
+        course_time = #{courseTime}
         WHERE id = #{id}
     </update>
 
