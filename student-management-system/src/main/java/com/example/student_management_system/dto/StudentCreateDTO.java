@@ -7,14 +7,13 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import lombok.Data;
 
-// 这个类定义了前端在创建新学生时，必须提供的数据和其验证规则
-@Data
+@Data // 【关键】确保这个注解存在，它会自动生成所有字段的get/set方法
 public class StudentCreateDTO {
 
-    @NotBlank(message = "学号不能为空")
-    @Size(min = 4, max = 20, message = "学号长度必须在4到20之间")
-    private String studentId;
+    // --- 账户信息 ---
+    private String password;
 
+    // --- 基本信息 ---
     @NotBlank(message = "姓名不能为空")
     @Size(min = 2, max = 50, message = "姓名长度必须在2到50之间")
     private String name;
@@ -26,6 +25,21 @@ public class StudentCreateDTO {
     @Past(message = "出生日期必须是过去的时间")
     private LocalDate dateOfBirth;
 
+    private String ethnicity;
+    private String nativePlace;
+    private String politicalStatus;
+
+    // --- 联系方式 ---
+    private String phoneNumber;
+    private String email;
+
+    // --- 学籍信息 ---
+    @NotBlank(message = "学号不能为空")
+    @Size(min = 4, max = 20, message = "学号长度必须在4到20之间")
+    private String studentId;
+
+    private String college;
+
     @NotBlank(message = "班级名称不能为空")
     @Size(max = 100, message = "班级名称长度不能超过100")
     private String className;
@@ -33,9 +47,8 @@ public class StudentCreateDTO {
     @Size(max = 100, message = "专业列表长度不能超过100")
     private String major;
 
+    private LocalDate enrollmentDate;
+    private String studentStatus;
     private Double gpa;
     private String photoUrl;
-
-    // --- Getters and Setters ---
-    // ... (省略，与上面类似)
 }

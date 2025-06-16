@@ -60,7 +60,9 @@ const handleStudentSelect = (student) => {
 
 const handleAddNewStudent = () => {
   const newStudentTemplate = {
-    studentId: '', name: '', gender: '男', dateOfBirth: '', className: '', major: '', gpa: null, photoUrl: ''
+    id: null,
+    password: '', name: '', gender: '男', dateOfBirth: '', ethnicity: '', nativePlace: '', politicalStatus: '群众', phoneNumber: '', email: '',
+    studentId: '', college: '', className: '', major: '', enrollmentDate: '', studentStatus: '在读', gpa: null, photoUrl: ''
   };
   selectedStudent.value = newStudentTemplate;
 };

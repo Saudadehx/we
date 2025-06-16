@@ -7,8 +7,10 @@ import com.example.student_management_system.dto.StudentUpdateDTO;
 import com.example.student_management_system.mapper.StudentMapper;
 import com.example.student_management_system.model.Student;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,23 +20,32 @@ import java.util.stream.Collectors;
 public class StudentService {
 
     private final StudentMapper studentMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public StudentService(StudentMapper studentMapper) {
+    public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder) {
         this.studentMapper = studentMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    // ✨ 转换方法：将 Student 实体转换为 StudentResponseDTO
     private StudentResponseDTO convertToResponseDto(Student student) {
         if (student == null) return null;
         StudentResponseDTO dto = new StudentResponseDTO();
         dto.setId(student.getId());
-        dto.setStudentId(student.getStudentId());
         dto.setName(student.getName());
         dto.setGender(student.getGender());
         dto.setDateOfBirth(student.getDateOfBirth());
+        dto.setEthnicity(student.getEthnicity());
+        dto.setNativePlace(student.getNativePlace());
+        dto.setPoliticalStatus(student.getPoliticalStatus());
+        dto.setPhoneNumber(student.getPhoneNumber());
+        dto.setEmail(student.getEmail());
+        dto.setStudentId(student.getStudentId());
+        dto.setCollege(student.getCollege());
         dto.setClassName(student.getClassName());
         dto.setMajor(student.getMajor());
+        dto.setEnrollmentDate(student.getEnrollmentDate());
+        dto.setStudentStatus(student.getStudentStatus());
         dto.setGpa(student.getGpa());
         dto.setPhotoUrl(student.getPhotoUrl());
         return dto;
@@ -61,7 +72,7 @@ public class StudentService {
         return stats;
     }
 
-    // ✨ 修改点1：返回值类型从 List<Student> 改为 List<StudentResponseDTO>
+
     @Transactional(readOnly = true)
     public List<StudentResponseDTO> getAllStudents() {
         return studentMapper.findAll().stream()
@@ -69,39 +80,54 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
-    // ✨ 修改点2：返回值类型从 Optional<Student> 改为 Optional<StudentResponseDTO>
+
     @Transactional(readOnly = true)
     public Optional<StudentResponseDTO> getStudentById(Long id) {
         Student student = studentMapper.findById(id);
         return Optional.ofNullable(convertToResponseDto(student));
     }
 
-    // ✨ 修改点3：参数类型从 Student 改为 StudentCreateDTO，返回值改为 StudentResponseDTO
+
     @Transactional
     public StudentResponseDTO createStudent(StudentCreateDTO studentDto) {
         Student existingStudent = studentMapper.findByStudentId(studentDto.getStudentId());
         if (existingStudent != null) {
             throw new IllegalArgumentException("学号 " + studentDto.getStudentId() + " 已存在。");
         }
-
-        // 将 DTO 转换为实体
         Student student = new Student();
-        student.setStudentId(studentDto.getStudentId());
+
+        if (StringUtils.hasText(studentDto.getPassword())) {
+            student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
+        }
+
+        // 基本信息
         student.setName(studentDto.getName());
         student.setGender(studentDto.getGender());
         student.setDateOfBirth(studentDto.getDateOfBirth());
+        student.setEthnicity(studentDto.getEthnicity());
+        student.setNativePlace(studentDto.getNativePlace());
+        student.setPoliticalStatus(studentDto.getPoliticalStatus());
+
+        // 联系方式
+        student.setPhoneNumber(studentDto.getPhoneNumber());
+        student.setEmail(studentDto.getEmail());
+
+        // 学籍信息
+        student.setStudentId(studentDto.getStudentId());
+        student.setCollege(studentDto.getCollege());
         student.setClassName(studentDto.getClassName());
         student.setMajor(studentDto.getMajor());
+        student.setEnrollmentDate(studentDto.getEnrollmentDate());
+        student.setStudentStatus(studentDto.getStudentStatus());
         student.setGpa(studentDto.getGpa());
         student.setPhotoUrl(studentDto.getPhotoUrl());
 
         studentMapper.insert(student);
 
-        // 将新创建的、带有ID的实体转换回 DTO 返回给 Controller
         return convertToResponseDto(studentMapper.findByStudentId(student.getStudentId()));
     }
 
-    // ✨ 修改点4：参数类型从 Student 改为 StudentUpdateDTO，返回值改为 StudentResponseDTO
+
     @Transactional
     public StudentResponseDTO updateStudent(Long id, StudentUpdateDTO studentDetails) {
         Student student = studentMapper.findById(id);
@@ -115,24 +141,37 @@ public class StudentService {
                 throw new IllegalArgumentException("学号 " + studentDetails.getStudentId() + " 已被其他学生使用。");
             }
         }
-
-        // 使用 DTO 的数据更新实体
-        student.setStudentId(studentDetails.getStudentId());
+        if (StringUtils.hasText(studentDetails.getPassword())) {
+            student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
+        }
+        // 基本信息
         student.setName(studentDetails.getName());
         student.setGender(studentDetails.getGender());
         student.setDateOfBirth(studentDetails.getDateOfBirth());
+        student.setEthnicity(studentDetails.getEthnicity());
+        student.setNativePlace(studentDetails.getNativePlace());
+        student.setPoliticalStatus(studentDetails.getPoliticalStatus());
+
+        // 联系方式
+        student.setPhoneNumber(studentDetails.getPhoneNumber());
+        student.setEmail(studentDetails.getEmail());
+
+        // 学籍信息
+        student.setStudentId(studentDetails.getStudentId());
+        student.setCollege(studentDetails.getCollege());
         student.setClassName(studentDetails.getClassName());
         student.setMajor(studentDetails.getMajor());
+        student.setEnrollmentDate(studentDetails.getEnrollmentDate());
+        student.setStudentStatus(studentDetails.getStudentStatus());
         student.setGpa(studentDetails.getGpa());
         student.setPhotoUrl(studentDetails.getPhotoUrl());
 
         studentMapper.update(student);
 
-        // 返回更新后的 DTO
         return convertToResponseDto(student);
     }
 
-    // ✨ 修改点5：删除方法无需修改，因为它只处理ID
+
     @Transactional
     public void deleteStudent(Long id) {
         Student student = studentMapper.findById(id);

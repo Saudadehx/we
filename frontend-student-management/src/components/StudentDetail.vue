@@ -16,48 +16,110 @@
     <div class="content-grid">
       <div class="info-card">
         <h4>基本信息</h4>
-        <div class="info-item">
-          <label for="name">姓名</label>
-          <span v-if="!isEditing">{{ student.name }}</span>
-          <input v-else v-model="editableStudent.name" id="name" class="editable-input" :class="{ 'input-error': validationErrors.name }"/>
-        </div>
-        <div class="info-item">
-          <label for="gender">性别</label>
-          <span v-if="!isEditing">{{ student.gender }}</span>
-          <div v-else class="select-wrapper">
-            <select v-model="editableStudent.gender" id="gender" class="editable-input">
+        <div class="form-grid">
+          <div class="info-item">
+            <label for="name">姓名</label>
+            <span v-if="!isEditing">{{ student.name }}</span>
+            <input v-else v-model="editableStudent.name" id="name" class="editable-input"/>
+          </div>
+          <div class="info-item">
+            <label for="gender">性别</label>
+            <span v-if="!isEditing">{{ student.gender }}</span>
+            <select v-else v-model="editableStudent.gender" id="gender" class="editable-input">
               <option>男</option><option>女</option><option>其他</option>
             </select>
           </div>
+          <div class="info-item">
+            <label for="dob">出生日期</label>
+            <span v-if="!isEditing">{{ student.dateOfBirth }}</span>
+            <input v-else type="date" v-model="editableStudent.dateOfBirth" id="dob" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="ethnicity">民族</label>
+            <span v-if="!isEditing">{{ student.ethnicity }}</span>
+            <input v-else v-model="editableStudent.ethnicity" id="ethnicity" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="nativePlace">籍贯</label>
+            <span v-if="!isEditing">{{ student.nativePlace }}</span>
+            <input v-else v-model="editableStudent.nativePlace" id="nativePlace" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="politicalStatus">政治面貌</label>
+            <span v-if="!isEditing">{{ student.politicalStatus }}</span>
+            <select v-else v-model="editableStudent.politicalStatus" id="politicalStatus" class="editable-input">
+              <option>群众</option><option>共青团员</option><option>中共预备党员</option><option>中共党员</option><option>其他</option>
+            </select>
+          </div>
         </div>
-        <div class="info-item">
-          <label for="dob">出生日期</label>
-          <span v-if="!isEditing">{{ student.dateOfBirth }}</span>
-          <input v-else type="date" v-model="editableStudent.dateOfBirth" id="dob" class="editable-input" :class="{ 'input-error': validationErrors.dateOfBirth }" />
+      </div>
+
+      <div class="info-card">
+        <h4>联系方式</h4>
+        <div class="form-grid">
+          <div class="info-item">
+            <label for="phoneNumber">手机号码</label>
+            <span v-if="!isEditing">{{ student.phoneNumber }}</span>
+            <input v-else v-model="editableStudent.phoneNumber" id="phoneNumber" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="email">电子邮箱</label>
+            <span v-if="!isEditing">{{ student.email }}</span>
+            <input v-else type="email" v-model="editableStudent.email" id="email" class="editable-input" />
+          </div>
         </div>
       </div>
 
       <div class="info-card">
         <h4>学籍信息</h4>
-        <div class="info-item">
-          <label for="studentId">学号</label>
-          <span v-if="!isEditing">{{ student.studentId }}</span>
-          <input v-else v-model="editableStudent.studentId" id="studentId" class="editable-input" :class="{ 'input-error': validationErrors.studentId }" :disabled="!isCreatingNew"/>
+        <div class="form-grid">
+          <div class="info-item">
+            <label for="studentId">学号</label>
+            <span v-if="!isEditing">{{ student.studentId }}</span>
+            <input v-else v-model="editableStudent.studentId" id="studentId" class="editable-input" :disabled="!isCreatingNew"/>
+          </div>
+          <div class="info-item">
+            <label for="enrollmentDate">入学日期</label>
+            <span v-if="!isEditing">{{ student.enrollmentDate }}</span>
+            <input v-else type="date" v-model="editableStudent.enrollmentDate" id="enrollmentDate" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="college">学院</label>
+            <span v-if="!isEditing">{{ student.college }}</span>
+            <input v-else v-model="editableStudent.college" id="college" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="major">专业</label>
+            <span v-if="!isEditing">{{ student.major }}</span>
+            <input v-else v-model="editableStudent.major" id="major" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="className">班级</label>
+            <span v-if="!isEditing">{{ student.className }}</span>
+            <input v-else v-model="editableStudent.className" id="className" class="editable-input" />
+          </div>
+          <div class="info-item">
+            <label for="studentStatus">学籍状态</label>
+            <span v-if="!isEditing">{{ student.studentStatus }}</span>
+            <select v-else v-model="editableStudent.studentStatus" id="studentStatus" class="editable-input">
+              <option>在读</option><option>休学</option><option>毕业</option><option>退学</option>
+            </select>
+          </div>
+          <div class="info-item">
+            <label for="gpa">绩点 (GPA)</label>
+            <span v-if="!isEditing">{{ student.gpa }}</span>
+            <input v-else type="number" step="0.01" v-model="editableStudent.gpa" id="gpa" class="editable-input" />
+          </div>
         </div>
-        <div class="info-item">
-          <label for="className">班级</label>
-          <span v-if="!isEditing">{{ student.className }}</span>
-          <input v-else v-model="editableStudent.className" id="className" class="editable-input" :class="{ 'input-error': validationErrors.className }" />
-        </div>
-        <div class="info-item">
-          <label for="major">专业</label>
-          <span v-if="!isEditing">{{ student.major }}</span>
-          <input v-else v-model="editableStudent.major" id="major" class="editable-input" />
-        </div>
-        <div class="info-item">
-          <label for="gpa">绩点 (GPA)</label>
-          <span v-if="!isEditing">{{ student.gpa }}</span>
-          <input v-else type="number" step="0.01" v-model="editableStudent.gpa" id="gpa" class="editable-input" />
+      </div>
+
+      <div class="info-card" v-if="isEditing">
+        <h4>账户信息</h4>
+        <div class="form-grid">
+          <div class="info-item">
+            <label for="password">登录密码</label>
+            <input type="password" v-model="editableStudent.password" id="password" class="editable-input" placeholder="不修改请留空"/>
+          </div>
         </div>
       </div>
     </div>
@@ -186,13 +248,19 @@ const handleDelete = () => { if (!isCreatingNew.value) emit('delete-student', pr
   padding-bottom: var(--spacing-md);
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 创建两列 */
+  gap: var(--spacing-md) var(--spacing-xl); /* 行间距 和 列间距 */
+}
+
 .info-item {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: 80px 1fr; /* 标签80px宽，输入框占满剩余 */
   align-items: center;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
 }
+
 .info-item:last-child {
   margin-bottom: 0;
 }
@@ -200,6 +268,7 @@ const handleDelete = () => { if (!isCreatingNew.value) emit('delete-student', pr
   color: var(--color-text-secondary);
   font-weight: 500;
   text-align: right;
+  font-size: 0.9em;
 }
 .info-item span {
   font-weight: 500;
