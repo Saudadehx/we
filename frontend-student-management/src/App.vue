@@ -9,8 +9,14 @@
         <h1>学生管理系统</h1>
       </div>
       <nav class="header-nav">
-        <router-link to="/dashboard">主页概览</router-link>
-        <router-link to="/students">学生列表</router-link>
+        <template v-if="isAdmin">
+          <router-link to="/dashboard">主页概览</router-link>
+          <router-link to="/students">学生列表</router-link>
+        </template>
+        <template v-if="!isAdmin">
+          <router-link to="/my-profile">我的档案</router-link>
+        </template>
+
         <a v-if="isLoggedIn" @click="logout" class="logout-link">登出</a>
       </nav>
     </header>
@@ -29,6 +35,7 @@ import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.isAdmin);
 const isLoginPage = computed(() => route.name === 'Login');
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const logout = () => {
@@ -109,7 +116,7 @@ const logout = () => {
 .app-main {
   flex-grow: 1;
   display: flex;
-  overflow: hidden;
+  overflow: auto;
   background-color: var(--color-background); /* 使用变量 */
 }
 

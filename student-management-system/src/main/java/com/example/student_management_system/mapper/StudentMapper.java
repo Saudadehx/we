@@ -10,6 +10,6 @@ public interface StudentMapper {
     Student findById(Long id);
     Student findByStudentId(String studentId);
     void insert(Student student);
-    void update(Student student);
+    int update(Student student);
     void deleteById(Long id);
 }

@@ -48,10 +48,23 @@ export const useAuthStore = defineStore('auth', () => {
     // 登录动作
     async function login(username, password) {
         try {
-            // 注意：这里我们直接使用 apiClient，因为登录的逻辑完全封装在 store 里了
             const response = await apiClient.post('/auth/authenticate', { username, password })
-            setToken(response.token) // 调用内部 action 设置 token
-            await router.push('/dashboard') // 登录成功后跳转
+            const tokenValue = response.token;
+            setToken(tokenValue) // 设置token
+
+            // 【关键修改】解码Token以获取角色
+            const decodedToken = jwtDecode(tokenValue);
+            const authorities = decodedToken.authorities || [];
+
+            // 判断角色并跳转
+            if (authorities.some(auth => auth.authority === 'ROLE_ADMIN')) {
+                await router.push('/dashboard') // 管理员跳转到主页概览
+            } else if (authorities.some(auth => auth.authority === 'ROLE_STUDENT')) {
+                await router.push('/my-profile') // 学生跳转到个人中心
+            } else {
+                await router.push('/') // 默认跳转
+            }
+
             return true
         } catch (error) {
             console.error("登录失败:", error)

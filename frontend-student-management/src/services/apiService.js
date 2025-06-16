@@ -34,12 +34,15 @@ apiClient.interceptors.response.use(
 
 // 学生管理相关的API保持不变
 export const studentService = {
-  getStats() { return apiClient.get('/students/stats'); },
-  getAllStudents() { return apiClient.get('/students'); },
-  getStudentById(id) { return apiClient.get(`/students/${id}`); },
-  createStudent(studentData) { return apiClient.post('/students', studentData); },
-  updateStudent(id, studentData) { return apiClient.put(`/students/${id}`, studentData); },
-  deleteStudent(id) { return apiClient.delete(`/students/${id}`); }
+    getStats() { return apiClient.get('/students/stats'); },
+    getAllStudents() { return apiClient.get('/students'); },
+    getStudentById(id) { return apiClient.get(`/students/${id}`); },
+    createStudent(studentData) { return apiClient.post('/students', studentData); },
+    updateStudent(id, studentData) { return apiClient.put(`/students/${id}`, studentData); },
+    deleteStudent(id) { return apiClient.delete(`/students/${id}`); },
+    getMyProfile() { return apiClient.get('/my-profile'); },
+    updateMyProfile(profileData) { return apiClient.put('/my-profile', profileData); }
+
 };
 
 // 注意：authService 和对 jwt-decode, authStore 的导入都已移除

@@ -1,9 +1,6 @@
 package com.example.student_management_system.service;
 
-import com.example.student_management_system.dto.DashboardStatsDTO;
-import com.example.student_management_system.dto.StudentCreateDTO;
-import com.example.student_management_system.dto.StudentResponseDTO;
-import com.example.student_management_system.dto.StudentUpdateDTO;
+import com.example.student_management_system.dto.*;
 import com.example.student_management_system.mapper.StudentMapper;
 import com.example.student_management_system.model.Student;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,25 +91,23 @@ public class StudentService {
         if (existingStudent != null) {
             throw new IllegalArgumentException("学号 " + studentDto.getStudentId() + " 已存在。");
         }
+
         Student student = new Student();
 
+        // 【关键】确保 password 字段从 DTO 正确映射并加密
         if (StringUtils.hasText(studentDto.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
         }
 
-        // 基本信息
+        // 确保所有其他字段都从 DTO 正确映射
         student.setName(studentDto.getName());
         student.setGender(studentDto.getGender());
         student.setDateOfBirth(studentDto.getDateOfBirth());
         student.setEthnicity(studentDto.getEthnicity());
         student.setNativePlace(studentDto.getNativePlace());
         student.setPoliticalStatus(studentDto.getPoliticalStatus());
-
-        // 联系方式
         student.setPhoneNumber(studentDto.getPhoneNumber());
         student.setEmail(studentDto.getEmail());
-
-        // 学籍信息
         student.setStudentId(studentDto.getStudentId());
         student.setCollege(studentDto.getCollege());
         student.setClassName(studentDto.getClassName());
@@ -124,7 +119,9 @@ public class StudentService {
 
         studentMapper.insert(student);
 
-        return convertToResponseDto(studentMapper.findByStudentId(student.getStudentId()));
+        // 返回新创建的学生信息
+        Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
+        return convertToResponseDto(createdStudent);
     }
 
 
@@ -166,8 +163,11 @@ public class StudentService {
         student.setGpa(studentDetails.getGpa());
         student.setPhotoUrl(studentDetails.getPhotoUrl());
 
-        studentMapper.update(student);
-
+        int affectedRows = studentMapper.update(student);
+        if (affectedRows == 0) {
+            // 如果影响行数为0，说明更新没有成功，可能是数据版本问题或ID不存在
+            throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
+        }
         return convertToResponseDto(student);
     }
 
@@ -179,5 +179,28 @@ public class StudentService {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生，无法删除。");
         }
         studentMapper.deleteById(id);
+    }
+
+    @Transactional
+    public StudentResponseDTO updateStudentProfile(Long studentId, StudentProfileUpdateDTO profileDetails) {
+        Student student = studentMapper.findById(studentId);
+        if (student == null) {
+            throw new ResourceNotFoundException("未找到ID为 " + studentId + " 的学生。");
+        }
+
+        // 学生只能更新部分信息
+        if (StringUtils.hasText(profileDetails.getPassword())) {
+            student.setPassword(passwordEncoder.encode(profileDetails.getPassword()));
+        }
+        student.setPhoneNumber(profileDetails.getPhoneNumber());
+        student.setEmail(profileDetails.getEmail());
+
+        // 【关键修改】同样检查update操作影响的行数
+        int affectedRows = studentMapper.update(student);
+        if (affectedRows == 0) {
+            throw new RuntimeException("更新个人信息失败，请刷新后重试。");
+        }
+
+        return convertToResponseDto(student);
     }
 }

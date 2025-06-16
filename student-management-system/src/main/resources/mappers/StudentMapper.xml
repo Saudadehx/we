@@ -42,23 +42,25 @@
 
     <update id="update" parameterType="Student">
         UPDATE students
-        SET student_id = #{studentId},
-            password = #{password},
-            name = #{name},
-            gender = #{gender},
-            date_of_birth = #{dateOfBirth},
-            ethnicity = #{ethnicity},
-            native_place = #{nativePlace},
-            political_status = #{politicalStatus},
-            phone_number = #{phoneNumber},
-            email = #{email},
-            college = #{college},
-            class_name = #{className},
-            majors = #{major},
-            enrollment_date = #{enrollmentDate},
-            student_status = #{studentStatus},
-            gpa = #{gpa},
-            photo_url = #{photoUrl}
+        <set>
+            <if test="studentId != null and studentId != ''">student_id = #{studentId},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="gender != null and gender != ''">gender = #{gender},</if>
+            <if test="dateOfBirth != null">date_of_birth = #{dateOfBirth},</if>
+            <if test="ethnicity != null">ethnicity = #{ethnicity},</if>
+            <if test="nativePlace != null">native_place = #{nativePlace},</if>
+            <if test="politicalStatus != null">political_status = #{politicalStatus},</if>
+            <if test="phoneNumber != null">phone_number = #{phoneNumber},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="college != null">college = #{college},</if>
+            <if test="className != null and className != ''">class_name = #{className},</if>
+            <if test="major != null">majors = #{major},</if>
+            <if test="enrollmentDate != null">enrollment_date = #{enrollmentDate},</if>
+            <if test="studentStatus != null">student_status = #{studentStatus},</if>
+            <if test="gpa != null">gpa = #{gpa},</if>
+            <if test="photoUrl != null">photo_url = #{photoUrl},</if>
+        </set>
         WHERE id = #{id}
     </update>
 
