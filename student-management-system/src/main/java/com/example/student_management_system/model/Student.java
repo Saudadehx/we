@@ -10,12 +10,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
-
+import java.util.HashSet;
+import java.util.Set;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "students") // 定义数据库中的表名
-public class Student {
+public class Student{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 主键自增
@@ -45,9 +48,22 @@ public class Student {
     @Column(name = "class_name", nullable = false)
     private String className;
 
-    // 构造函数
-    public Student() {
-    }
+    @Size(max = 100, message = "专业列表长度不能超过100")
+    @Column(name = "majors")
+    private String major;
+
+    @Column(name = "gpa")
+    private Double gpa;
+
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    // 一对多关系：一个学生可以有多条成绩记录
+    // CascadeType.ALL: 当我们保存/删除一个学生时，与他关联的成绩也会被一并处理
+    // orphanRemoval = true: 如果从这个学生的成绩集合中移除一条成绩，那条成绩记录将从数据库中被删除
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Grade> grades = new HashSet<>();
+
 
     public Student(String studentId, String name, String gender, LocalDate dateOfBirth, String className) {
         this.studentId = studentId;
@@ -55,6 +71,10 @@ public class Student {
         this.gender = gender;
         this.dateOfBirth = dateOfBirth;
         this.className = className;
+    }
+
+    public Student() {
+
     }
 
     // Getter 和 Setter 方法

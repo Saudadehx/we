@@ -4,7 +4,7 @@
       <h1>学生管理系统</h1>
       <nav>
         <router-link to="/">学生列表</router-link>
-        <!-- router-link to="/students/new" style="margin-left: 10px;">添加学生</router-link -->
+        <a v-if="isLoggedIn" @click="logout" class="logout-link">登出</a>
       </nav>
     </header>
     <main class="app-main">
@@ -17,7 +17,20 @@
 </template>
 
 <script setup>
-// No specific script needed for App.vue at this moment
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { authService } from '@/services/apiService';
+
+const router = useRouter();
+
+// 计算属性，判断用户是否登录
+const isLoggedIn = computed(() => !!localStorage.getItem('token'));
+
+const logout = () => {
+  authService.logout();
+  // 登出后跳转到登录页
+  router.push('/login');
+};
 </script>
 
 <style scoped>
@@ -68,5 +81,17 @@
   padding: 10px;
   border-top: 1px solid #eee;
   font-size: 0.9em;
+}
+.logout-link {
+  color: white;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  margin-left: 15px;
+  cursor: pointer;
+}
+
+.logout-link:hover {
+  background-color: #f44336; /* 红色背景高亮 */
 }
 </style>

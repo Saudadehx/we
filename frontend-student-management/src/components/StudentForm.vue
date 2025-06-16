@@ -41,7 +41,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import studentApiService from '@/services/studentApiService'; // 引入真实的API服务
+// 错误在这里：将默认导入改为命名导入
+import { studentService } from '@/services/apiService';
 
 const props = defineProps({
   id: String // 从路由参数接收，用于编辑模式
@@ -69,7 +70,8 @@ const submitButtonText = computed(() => isEditMode.value ? '更新' : '创建');
 const fetchStudentDetails = async (studentIdParam) => {
   if (!studentIdParam) return;
   try {
-    const response = await studentApiService.getStudentById(studentIdParam);
+    // 同时，将 studentApiService 改为 studentService
+    const response = await studentService.getStudentById(studentIdParam);
     student.value = response.data;
   } catch (error) {
     console.error('获取学生详情失败:', error);
@@ -91,9 +93,11 @@ const handleSubmit = async () => {
   errorMessage.value = ''; // 重置错误信息
   try {
     if (isEditMode.value) {
-      await studentApiService.updateStudent(props.id, student.value);
+      // 将 studentApiService 改为 studentService
+      await studentService.updateStudent(props.id, student.value);
     } else {
-      await studentApiService.createStudent(student.value);
+      // 将 studentApiService 改为 studentService
+      await studentService.createStudent(student.value);
     }
     router.push('/'); // 操作成功后，返回列表页
   } catch (err) {
