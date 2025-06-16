@@ -7,13 +7,32 @@ import com.example.student_management_system.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // 用于声明事务性方法
-
+import com.example.student_management_system.dto.DashboardStatsDTO;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 @Service // 声明这是一个Service Bean
 public class StudentService {
+    public DashboardStatsDTO getDashboardStats() {
+        List<Student> students = studentRepository.findAll();
+        long totalStudents = students.size();
+        long totalClasses = students.stream().map(Student::getClassName).distinct().count();
+        long totalMajors = students.stream().map(Student::getMajor).filter(m -> m != null && !m.isEmpty()).distinct().count();
+        long totalGrades = students.stream()
+                .map(s -> s.getClassName().replaceAll("[^0-9]", "")) // 提取班级中的数字
+                .filter(s -> !s.isEmpty())
+                .map(s -> s.substring(0, 2)) // 取前两位作为年级
+                .distinct()
+                .count();
 
+        DashboardStatsDTO stats = new DashboardStatsDTO();
+        stats.setTotalStudents(totalStudents);
+        stats.setTotalClasses(totalClasses);
+        stats.setTotalMajors(totalMajors);
+        stats.setTotalGrades(totalGrades);
+        return stats;
+    }
     private final StudentRepository studentRepository;
 
     @Autowired // 构造函数注入 StudentRepository

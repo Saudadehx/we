@@ -62,6 +62,9 @@ export const authService = {
 
 // 封装学生管理相关的API
 export const studentService = {
+  getStats() {
+    return apiClient.get('/students/stats');
+  },
   getAllStudents() {
     return apiClient.get('/students');
   },

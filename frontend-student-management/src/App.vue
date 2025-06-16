@@ -4,7 +4,7 @@
     <header class="app-header" v-if="!isLoginPage">
       <h1>学生管理系统</h1>
       <nav>
-        <router-link to="/students">学生列表</router-link>
+        <router-link to="/dashboard">主页概览</router-link> <router-link to="/students">学生列表</router-link>
         <a v-if="isLoggedIn" @click="logout" class="logout-link">登出</a>
       </nav>
     </header>

@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-
+import com.example.student_management_system.dto.DashboardStatsDTO;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +27,10 @@ public class StudentController {
     public StudentController(StudentService studentService) {
         this.studentService = studentService;
     }
-
+    @GetMapping("/stats")
+    public ResponseEntity<DashboardStatsDTO> getStats() {
+        return ResponseEntity.ok(studentService.getDashboardStats());
+    }
     // GET /api/students - 获取所有学生
     @GetMapping
     public ResponseEntity<List<Student>> getAllStudents() {

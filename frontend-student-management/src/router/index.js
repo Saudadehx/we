@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Login from '@/views/Login.vue';
 import StudentDashboard from '@/views/StudentDashboard.vue'; // 确保引入的是 StudentDashboard
 import StudentForm from '@/components/StudentForm.vue';
-
+import DashboardHome from '@/views/DashboardHome.vue';
 const routes = [
   {
     path: '/login',
@@ -12,6 +12,16 @@ const routes = [
   {
     path: '/',
     redirect: '/students'
+  },
+  {
+    path: '/',
+    redirect: '/dashboard' // 重定向到新的主页
+  },
+  {
+    path: '/dashboard', // 新增主页路由
+    name: 'DashboardHome',
+    component: DashboardHome,
+    meta: { requiresAuth: true }
   },
   {
     path: '/students',

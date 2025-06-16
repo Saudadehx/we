@@ -1,12 +1,24 @@
 <template>
   <div class="dashboard-container">
     <div class="student-list-panel">
-      <StudentList :students="students" @student-selected="handleStudentSelect" />
+      <StudentList
+          :students="students"
+          @student-selected="handleStudentSelect"
+          @add-student-requested="handleAddStudent"
+      />
     </div>
     <div class="student-detail-panel">
-      <StudentDetail v-if="selectedStudent" :student="selectedStudent" :key="selectedStudent.id" @student-updated="refreshStudentList"/>
+      <StudentDetail
+          v-if="selectedStudent || isCreating"
+          :student="selectedStudent"
+          :is-creating="isCreating"
+          :key="selectedStudent ? selectedStudent.id : 'new'"
+          @student-updated="refreshStudentList"
+          @student-created="handleStudentCreated"
+          @student-deleted="handleStudentDeleted"
+      />
       <div v-else class="placeholder">
-        请从左侧选择一个学生以查看详情
+        请从左侧选择一个学生或新增学生
       </div>
     </div>
   </div>
@@ -20,6 +32,7 @@ import StudentDetail from '@/components/StudentDetail.vue';
 
 const students = ref([]);
 const selectedStudent = ref(null);
+const isCreating = ref(false);
 
 const fetchStudents = async () => {
   try {
@@ -30,16 +43,33 @@ const fetchStudents = async () => {
   }
 };
 
-// 组件加载时获取学生列表
 onMounted(fetchStudents);
 
-// 当左侧列表发出 "student-selected" 事件时，此方法被调用
 const handleStudentSelect = (student) => {
+  isCreating.value = false;
   selectedStudent.value = student;
 };
 
-// 当学生信息更新后，刷新列表以获取最新数据
+const handleAddStudent = () => {
+  selectedStudent.value = null; // 清空当前选择
+  isCreating.value = true; // 进入创建模式
+};
+
 const refreshStudentList = async () => {
+  isCreating.value = false;
+  await fetchStudents();
+};
+
+const handleStudentCreated = async (newStudent) => {
+  isCreating.value = false;
+  await fetchStudents();
+  // 创建成功后，自动选中这个新学生
+  selectedStudent.value = newStudent;
+};
+
+const handleStudentDeleted = async () => {
+  selectedStudent.value = null;
+  isCreating.value = false;
   await fetchStudents();
 };
 
@@ -48,12 +78,14 @@ const refreshStudentList = async () => {
 <style scoped>
 .dashboard-container {
   display: flex;
-  height: calc(100vh - 150px); /* 视情况调整高度 */
+  height: 100%; /* 占满父容器高度 */
+  width: 100%;
 }
 .student-list-panel {
   width: 300px;
   border-right: 1px solid #e0e0e0;
   overflow-y: auto;
+  background-color: #fff;
 }
 .student-detail-panel {
   flex-grow: 1;
