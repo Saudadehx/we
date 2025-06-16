@@ -21,7 +21,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@EnableMethodSecurity
+@EnableMethodSecurity // 启用方法级别安全
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
@@ -30,13 +30,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults()) // **第1处修改：启用Spring Security的CORS配置**
-                .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable()) // 确认 CSRF 已禁用
                 .authorizeHttpRequests(auth -> auth
+                        // 允许 OPTIONS 请求 (CORS 预检请求)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 认证相关路径允许所有访问
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/students").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/students/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/students/**").hasRole("ADMIN")
+                        // 所有 /api/** 路径下的请求，只要认证通过就允许访问，角色检查完全交给 @PreAuthorize
+                        .requestMatchers("/api/**").authenticated() // 对所有API路径只需认证
+                        // 其他所有未匹配的请求也需要认证
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -46,21 +49,15 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // **第2处修改：添加这个Bean来定义详细的CORS规则**
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 允许来自前端开发服务器的请求
         configuration.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:5175"));
-        // 允许所有请求方法 (GET, POST, PUT, DELETE, OPTIONS等)
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // 允许所有请求头
         configuration.setAllowedHeaders(List.of("*"));
-        // 允许发送凭证 (如Cookie)
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 对所有 /api/ 开头的路径应用此CORS配置
         source.registerCorsConfiguration("/api/**", configuration);
         return source;
     }

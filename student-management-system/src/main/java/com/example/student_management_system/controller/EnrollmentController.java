@@ -38,7 +38,7 @@ public class EnrollmentController {
 
     /**
      * 教师更新成绩
-     * @param enrollmentId 选课记录的数据库ID
+     * @param enrollmentId 选课记录的ID
      * @param dto 包含分数的DTO
      * @param teacher 当前登录的教师 Principal
      * @return 操作成功
@@ -68,7 +68,7 @@ public class EnrollmentController {
     }
 
     /**
-     * 【新增】学生选课接口
+     * 学生选课接口
      * @param student 当前登录的学生
      * @param payload 请求体，需要包含 courseId
      * @return 创建的选课记录
@@ -85,6 +85,23 @@ public class EnrollmentController {
         }
         return ApiResult.success(enrollmentService.enrollCourseForStudent(courseId, student.getId()));
     }
+
+    /**
+     * 学生退课接口
+     * @param enrollmentId 选课记录的数据库ID
+     * @param student 当前登录的学生Principal
+     * @return 操作成功
+     */
+    @DeleteMapping("/students/me/enrollments/{enrollmentId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResult<?> dropCourse(
+            @PathVariable Long enrollmentId,
+            @AuthenticationPrincipal Student student
+    ) {
+        enrollmentService.dropCourse(enrollmentId, student.getId());
+        return ApiResult.success();
+    }
+
     // --- 供管理员使用的接口 ---
 
     /**

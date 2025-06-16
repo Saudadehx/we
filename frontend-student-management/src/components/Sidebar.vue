@@ -11,44 +11,44 @@
     <nav class="navigation">
       <template v-if="authStore.isAdmin">
         <router-link to="/dashboard/home">
-          <span>&#128202;</span> 主页概览
+          主页概览
         </router-link>
         <router-link to="/dashboard/students">
-          <span>&#128101;</span> 学生管理
+          学生管理
         </router-link>
         <router-link to="/dashboard/courses">
-          <span>&#128218;</span> 课程管理
+          课程管理
         </router-link>
         <router-link to="/dashboard/teachers">
-          <span>&#128188;</span> 教师管理
+          教师管理
         </router-link>
       </template>
 
       <template v-if="authStore.isTeacher">
         <router-link to="/teacher/dashboard">
-          <span>&#127979;</span> 我的课程
+          我的课程
         </router-link>
       </template>
 
       <template v-if="authStore.isStudent">
         <router-link to="/student/profile">
-          <span>&#128100;</span> 我的档案
+          我的档案
         </router-link>
         <router-link to="/student/courses">
-          <span>&#128214;</span> 我的课程
+          我的课程
         </router-link>
         <router-link to="/student/available-courses">
-          <span>&#128218;</span> 选课中心
+          选课中心
         </router-link>
         <router-link to="/student/timetable">
-          <span>&#128197;</span> 我的课表
+          我的课表
         </router-link>
       </template>
     </nav>
 
     <div class="sidebar-footer">
       <a @click="authStore.logout()" class="logout-button">
-        <span>&#128682;</span> 登出
+        登出
       </a>
     </div>
   </aside>
@@ -83,34 +83,35 @@ const userRoleText = computed(() => {
 </script>
 
 <style scoped>
-/* 样式无需改动 */
 .sidebar-container {
   display: flex;
   flex-direction: column;
   width: 240px;
-  background-color: #2c3e50;
-  color: #ecf0f1;
+  background-color: var(--color-text-primary);
+  color: var(--color-surface);
   height: 100vh;
+  box-shadow: var(--box-shadow);
 }
 
 .profile-section {
   display: flex;
   align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #34495e;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #3498db;
+  background-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
   font-weight: bold;
-  margin-right: 16px;
+  margin-right: var(--spacing-md);
+  color: var(--color-surface);
 }
 
 .user-info {
@@ -121,57 +122,62 @@ const userRoleText = computed(() => {
 .user-name {
   font-weight: 600;
   font-size: 1.1em;
+  color: var(--color-surface);
 }
 
 .user-role {
   font-size: 0.8em;
-  color: #bdc3c7;
+  color: var(--color-border);
 }
 
 .navigation {
   flex-grow: 1;
-  padding: 16px 0;
+  padding: var(--spacing-md) 0;
 }
 
 .navigation a {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  color: #ecf0f1;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  color: var(--color-surface);
   text-decoration: none;
   font-size: 1em;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-speed) ease;
 }
 
 .navigation a:hover {
-  background-color: #34495e;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .navigation a.router-link-exact-active {
-  background-color: #2980b9;
+  background-color: var(--color-primary);
+  color: var(--color-surface);
   font-weight: bold;
 }
 
 .sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid #34495e;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logout-button {
   display: flex;
   align-items: center;
-  gap: 12px;
   cursor: pointer;
   width: 100%;
-  padding: 12px;
-  border-radius: 4px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
   text-align: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-speed) ease;
+  color: var(--color-surface);
+  background-color: rgba(255, 255, 255, 0.05);
+  box-sizing: border-box;
 }
 
 .logout-button:hover {
-  background-color: #c0392b;
+  background-color: var(--color-danger);
+  color: var(--color-surface);
 }
 </style>

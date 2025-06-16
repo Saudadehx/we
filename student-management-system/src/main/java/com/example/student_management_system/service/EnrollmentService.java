@@ -53,7 +53,7 @@ public class EnrollmentService {
 
         List<Long> studentIds = enrollments.stream().map(Enrollment::getStudentId).collect(Collectors.toList());
         // 优化：仅查询相关的学生
-        List<Student> students = studentMapper.findByIds(studentIds); // 假设StudentMapper有findByIds方法
+        List<Student> students = studentMapper.findByIds(studentIds);
         Map<Long, Student> studentMap = students.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
 
@@ -91,7 +91,7 @@ public class EnrollmentService {
     }
 
     /**
-     * 【修改】学生获取自己的所有成绩，并附带课程时间信息
+     * 学生获取自己的所有成绩，并附带课程时间信息
      */
     @Transactional(readOnly = true)
     public List<EnrollmentResponseDTO> getEnrollmentsForStudent(Long studentId) {
@@ -114,7 +114,6 @@ public class EnrollmentService {
                 dto.setCourseName(course.getCourseName());
                 dto.setCourseId(course.getCourseId());
                 dto.setCredits(course.getCredits());
-                // 【新增】填充课程时间
                 dto.setCourseDay(course.getCourseDay());
                 dto.setCourseTime(course.getCourseTime());
             }
@@ -123,7 +122,7 @@ public class EnrollmentService {
     }
 
     /**
-     * 【新增方法】学生为自己选课
+     * 学生为自己选课
      * @param courseId 要选修课程的数据库ID
      * @param studentId 当前登录学生的数据库ID
      * @return 创建的选课记录
@@ -136,23 +135,19 @@ public class EnrollmentService {
         }
 
         // --- 时间冲突检测逻辑 ---
-        // 1. 获取该生已选的所有课程
         List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentId);
         if (!enrollments.isEmpty()) {
             List<Long> enrolledCourseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
             List<Course> enrolledCourses = courseMapper.findByIds(enrolledCourseIds);
 
-            // 2. 检查时间是否冲突
             for (Course enrolledCourse : enrolledCourses) {
                 if (Objects.equals(enrolledCourse.getCourseDay(), targetCourse.getCourseDay()) &&
                         Objects.equals(enrolledCourse.getCourseTime(), targetCourse.getCourseTime())) {
-                    // 如果星期和时间段都相同，则判定为冲突
                     throw new IllegalArgumentException("选课失败：与已选课程 '" + enrolledCourse.getCourseName() + "' 时间冲突。");
                 }
             }
         }
 
-        // --- 原有逻辑 ---
         Enrollment enrollment = new Enrollment();
         enrollment.setStudentId(studentId);
         enrollment.setCourseId(courseId);
@@ -184,5 +179,27 @@ public class EnrollmentService {
         }
 
         return enrollCourseForStudent(course.getId(), student.getId());
+    }
+
+    /**
+     * 学生退课
+     * @param enrollmentId 选课记录的数据库ID
+     * @param studentId 当前登录学生的数据库ID
+     */
+    @Transactional
+    public void dropCourse(Long enrollmentId, Long studentId) {
+        // 1. 查找选课记录是否存在
+        Enrollment enrollment = enrollmentMapper.findById(enrollmentId);
+        if (enrollment == null) {
+            throw new ResourceNotFoundException("该选课记录不存在。");
+        }
+
+        // 2. 验证该选课记录是否属于当前学生
+        if (!enrollment.getStudentId().equals(studentId)) {
+            throw new AccessDeniedException("您无权退选不属于您的课程。");
+        }
+
+        // 3. 执行删除操作 (退课)
+        enrollmentMapper.deleteById(enrollmentId);
     }
 }

@@ -9,22 +9,36 @@
     <div v-else class="content-card">
       <table class="data-table">
         <thead>
-          <tr>
-            <th>课程编号</th> <th>课程名称</th>
-            <th>学分</th>   <th class="score-col">我的成绩</th>
-          </tr>
+        <tr>
+          <th>课程编号</th>
+          <th>课程名称</th>
+          <th>学分</th>
+          <th class="score-col">我的成绩</th>
+          <th class="action-col">操作</th>
+        </tr>
         </thead>
         <tbody>
         <tr v-for="item in myEnrollments" :key="item.enrollmentId">
-          <td>{{ item.courseId }}</td> <td>{{ item.courseName }}</td>
-          <td>{{ item.credits }}</td>  <td class="score-col">
+          <td>{{ item.courseId }}</td>
+          <td>{{ item.courseName }}</td>
+          <td>{{ item.credits }}</td>
+          <td class="score-col">
             <span :class="getScoreClass(item.score)">
               {{ item.score !== null ? item.score : '暂无' }}
             </span>
           </td>
+          <td class="action-col">
+            <button
+                @click="handleDropCourse(item.enrollmentId)"
+                class="action-btn delete"
+                :disabled="isDropping"
+            >
+              退课
+            </button>
+          </td>
         </tr>
         <tr v-if="myEnrollments.length === 0">
-          <td colspan="4" style="text-align: center;">您尚未选修任何课程。</td>
+          <td colspan="5" style="text-align: center;">您尚未选修任何课程。</td>
         </tr>
         </tbody>
       </table>
@@ -34,17 +48,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { studentService } from '@/services/apiService';
+import { studentService, enrollmentService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
 
 const myEnrollments = ref([]);
 const isLoading = ref(true);
-
+const isDropping = ref(false);
 
 onMounted(async () => {
   isLoading.value = true;
   try {
-    // 使用我们刚刚在 apiService.js 中定义的、正确的函数名
     myEnrollments.value = await studentService.getMyCoursesAndGrades();
   } catch (error) {
     showNotification(error.message || '获取成绩失败', 'error');
@@ -58,6 +71,31 @@ const getScoreClass = (score) => {
   if (score >= 60) return 'score-pass';
   return 'score-fail';
 }
+
+const handleDropCourse = async (enrollmentId) => {
+  if (!confirm('确定要退选这门课程吗？退选后将无法恢复。')) {
+    return;
+  }
+
+  isDropping.value = true;
+  try {
+    await enrollmentService.dropCourse(enrollmentId);
+    showNotification('退课成功！', 'success');
+    await fetchMyCourses();
+  } catch (error) {
+    showNotification(error.message || '退课失败，请重试', 'error');
+  } finally {
+    isDropping.value = false;
+  }
+};
+
+const fetchMyCourses = async () => {
+  try {
+    myEnrollments.value = await studentService.getMyCoursesAndGrades();
+  } catch (error) {
+    showNotification(error.message || '重新加载课程失败', 'error');
+  }
+};
 </script>
 
 <style scoped>
@@ -69,14 +107,19 @@ const getScoreClass = (score) => {
   font-size: 1.1em;
 }
 .score-pass {
-  color: #28a745; /* 成功/通过的颜色 */
+  color: #28a745;
 }
 .score-fail {
-  color: var(--color-danger); /* 危险/失败的颜色 */
+  color: var(--color-danger);
 }
 .score-pending {
   color: var(--color-text-secondary);
   font-weight: normal;
   font-style: italic;
+}
+
+.action-col {
+  text-align: center;
+  width: 80px;
 }
 </style>

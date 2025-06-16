@@ -22,31 +22,26 @@ apiClient.interceptors.response.use(
 export const teacherService = {
     getAll: () => apiClient.get('/teachers'),
     create: (teacherData) => apiClient.post('/teachers', teacherData),
-    // 【新增】更新教师
     update: (id, teacherData) => apiClient.put(`/teachers/${id}`, teacherData),
-    // 【新增】删除教师
     delete: (id) => apiClient.delete(`/teachers/${id}`),
     getMyCourses: () => apiClient.get('/teachers/me/courses'),
 };
 
-// 文件路径: frontend-student-management/src/services/apiService.js
-// ...
 export const courseService = {
-    // 【修改】接收一个参数对象，并将其作为URL查询参数
     getAll: (params = {}) => apiClient.get('/courses', { params }),
     create: (courseData) => apiClient.post('/courses', courseData),
     update: (id, courseData) => apiClient.put(`/courses/${id}`, courseData),
     delete: (id) => apiClient.delete(`/courses/${id}`),
 };
-// ...
 
 export const enrollmentService = {
     getForCourse: (courseId) => apiClient.get(`/teachers/me/courses/${courseId}/enrollments`),
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
     enrollInCourse: (courseId) => apiClient.post('/students/me/enrollments', { courseId }),
+    // 学生退课接口
+    dropCourse: (enrollmentId) => apiClient.delete(`/students/me/enrollments/${enrollmentId}`),
 };
 
-// 学生管理相关的API保持不变
 export const studentService = {
     getStats() { return apiClient.get('/students/stats'); },
     getAllStudents() { return apiClient.get('/students'); },
