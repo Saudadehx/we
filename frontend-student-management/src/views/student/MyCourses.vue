@@ -9,10 +9,10 @@
     <div v-else class="content-card">
       <table class="data-table">
         <thead>
-          <tr>
-            <th>课程编号</th> <th>课程名称</th>
-            <th>学分</th>   <th class="score-col">我的成绩</th>
-          </tr>
+        <tr>
+          <th>课程编号</th> <th>课程名称</th>
+          <th>学分</th>   <th class="score-col">我的成绩</th>
+        </tr>
         </thead>
         <tbody>
         <tr v-for="item in myEnrollments" :key="item.enrollmentId">
@@ -21,7 +21,7 @@
             <span :class="getScoreClass(item.score)">
               {{ item.score !== null ? item.score : '暂无' }}
             </span>
-          </td>
+        </td>
         </tr>
         <tr v-if="myEnrollments.length === 0">
           <td colspan="4" style="text-align: center;">您尚未选修任何课程。</td>
