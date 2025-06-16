@@ -125,6 +125,19 @@ public class Student{
     public void setClassName(String className) {
         this.className = className;
     }
+    // ... (在现有的 getClassName() 和 setClassName() 方法后面添加)
+    public String getMajor() {return major;}
+
+    public void setMajor(String major) {this.major = major;}
+
+    public Double getGpa() {return gpa;}
+
+    public void setGpa(Double gpa) {this.gpa = gpa;}
+
+    public String getPhotoUrl() {return photoUrl;}
+
+    public void setPhotoUrl(String photoUrl) {this.photoUrl = photoUrl;}
+
 
     // (可选) toString, equals, hashCode 方法
     @Override

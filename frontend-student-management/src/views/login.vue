@@ -43,10 +43,12 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-container {
+  /* 确保容器占满其父元素（即 .app-main）的全部空间 */
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 80vh;
+  width: 100%;
+  height: 100%;
 }
 .login-form {
   padding: 40px;
@@ -54,10 +56,12 @@ const handleLogin = async () => {
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   width: 350px;
+  background-color: white; /* 添加背景色以区分 */
 }
 h2 {
   text-align: center;
   margin-bottom: 20px;
+  color: #333; /* 调整字体颜色 */
 }
 .form-group {
   margin-bottom: 15px;
@@ -65,11 +69,14 @@ h2 {
 label {
   display: block;
   margin-bottom: 5px;
+  color: #555; /* 调整字体颜色 */
 }
 input {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 .submit-btn {
   width: 100%;
@@ -80,6 +87,10 @@ input {
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
+  transition: background-color 0.3s;
+}
+.submit-btn:hover {
+  background-color: #286090;
 }
 .error-message {
   color: red;

@@ -39,8 +39,12 @@ public class JwtService {
 
     // 生成JWT
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        Map<String, Object> extraClaims = new HashMap<>();
+        // 将用户的权限集合放入JWT的claims中，key为"authorities"
+        extraClaims.put("authorities", userDetails.getAuthorities());
+        return generateToken(extraClaims, userDetails);
     }
+
 
     // 生成带额外声明的JWT
     public String generateToken(

@@ -1,16 +1,18 @@
 <template>
   <div id="app-container">
-    <header class="app-header">
+    <header class="app-header" v-if="!isLoginPage">
       <h1>学生管理系统</h1>
       <nav>
-        <router-link to="/">学生列表</router-link>
+        <router-link to="/students">学生列表</router-link>
         <a v-if="isLoggedIn" @click="logout" class="logout-link">登出</a>
       </nav>
     </header>
-    <main class="app-main">
-      <router-view></router-view>
+
+    <main class="app-main" :class="{ 'center-content': isLoginPage }">
+      <router-view />
     </main>
-    <footer class="app-footer">
+
+    <footer class="app-footer" v-if="!isLoginPage">
       <p>&copy; {{ new Date().getFullYear() }} 学生管理系统</p>
     </footer>
   </div>
@@ -18,80 +20,62 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { isLoggedIn } from '@/services/authStore';
 import { authService } from '@/services/apiService';
 
 const router = useRouter();
+const route = useRoute();
 
-// 计算属性，判断用户是否登录
-const isLoggedIn = computed(() => !!localStorage.getItem('token'));
+// 计算当前是否为登录页
+const isLoginPage = computed(() => route.name === 'Login');
 
 const logout = () => {
   authService.logout();
-  // 登出后跳转到登录页
   router.push('/login');
 };
 </script>
 
 <style scoped>
 #app-container {
-  font-family: 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  width: 100vw; /* 确保占满视口宽度 */
+  background-color: #f4f7f6;
 }
 
 .app-header {
   background-color: #333;
   color: white;
   padding: 15px 30px;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0; /* 防止页眉被压缩 */
 }
 
-.app-header h1 {
-  margin: 0;
-  font-size: 1.8em;
-}
-
-.app-header nav {
-  margin-top: 10px;
-}
-
-.app-header nav a {
-  color: white;
-  text-decoration: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
-.app-header nav a:hover,
-.app-header nav a.router-link-exact-active {
-  background-color: #555;
-}
+.app-header h1 { margin: 0; }
+.app-header nav a { color: white; text-decoration: none; margin-left: 15px; }
 
 .app-main {
-  flex-grow: 1;
-  padding: 20px;
+  flex-grow: 1; /* 占据所有剩余空间 */
+  display: flex; /* 默认为flex布局，方便其子元素（仪表盘）撑开 */
+  overflow: hidden; /* 防止内容溢出时出现双滚动条 */
+}
+
+/* 当 main 元素有 center-content 这个 class 时，使其内部内容居中 */
+.app-main.center-content {
+  justify-content: center;
+  align-items: center;
 }
 
 .app-footer {
-  background-color: #f8f8f8;
-  color: #333;
   text-align: center;
   padding: 10px;
   border-top: 1px solid #eee;
-  font-size: 0.9em;
+  background-color: #fff;
+  flex-shrink: 0; /* 防止页脚被压缩 */
 }
-.logout-link {
-  color: white;
-  text-decoration: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  margin-left: 15px;
-  cursor: pointer;
-}
-
-.logout-link:hover {
-  background-color: #f44336; /* 红色背景高亮 */
-}
+.logout-link { cursor: pointer; }
 </style>

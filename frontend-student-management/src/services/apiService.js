@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import { isLoggedIn } from './authStore.js';
 
 // 创建一个axios实例
 const apiClient = axios.create({
@@ -29,15 +30,15 @@ export const authService = {
     const response = await apiClient.post('/auth/authenticate', { username, password });
     const token = response.data.token;
     if (token) {
-      // 登录成功后，将token存入localStorage
       localStorage.setItem('token', token);
+      isLoggedIn.value = true; // 登录后，更新状态为 true
     }
     return response.data;
   },
 
   logout() {
-    // 登出时，从localStorage移除token
     localStorage.removeItem('token');
+    isLoggedIn.value = false; // 登出后，更新状态为 false
   },
 
   getUserRole() {
@@ -47,11 +48,7 @@ export const authService = {
     }
     try {
       const decodedToken = jwtDecode(token);
-      // Spring Security默认的角色信息在 'authorities' 或 'roles' 字段里
-      // 假设我们的后端在JWT中放入了角色信息
-      // 注意：实际项目中，角色字段名需要和后端生成JWT时放入的字段名一致
-      // Spring Security默认的角色会带 "ROLE_" 前缀
-      if (decodedToken.authorities && decodedToken.authorities.includes('ROLE_ADMIN')) {
+      if (decodedToken.authorities && decodedToken.authorities.some(auth => auth.authority ==='ROLE_ADMIN')) {
         return 'ADMIN';
       }
       return 'STUDENT';

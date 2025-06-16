@@ -66,7 +66,11 @@ public class StudentService {
         student.setGender(studentDetails.getGender());
         student.setDateOfBirth(studentDetails.getDateOfBirth());
         student.setClassName(studentDetails.getClassName());
-        // 注意：这里是直接覆盖所有字段，实际项目中可能需要更细致的更新逻辑
+
+        student.setMajor(studentDetails.getMajor());
+        student.setGpa(studentDetails.getGpa());
+        student.setPhotoUrl(studentDetails.getPhotoUrl());
+
 
         return studentRepository.save(student);
     }
