@@ -1,90 +1,84 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { apiClient } from '@/services/apiService' // 我们只从apiService导入最底层的apiClient
-import { jwtDecode } from 'jwt-decode'
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { apiClient } from '@/services/apiService';
+import { jwtDecode } from 'jwt-decode';
 
-// defineStore的第一个参数是这个store的唯一ID
 export const useAuthStore = defineStore('auth', () => {
-    // --- State ---
-    // 使用 ref 定义响应式状态，并从 localStorage 初始化 token
-    const token = ref(localStorage.getItem('token'))
-    const router = useRouter()
+    const token = ref(localStorage.getItem('token'));
+    const router = useRouter();
 
-    // --- Getters ---
-    // 是否已登录
-    const isLoggedIn = computed(() => !!token.value)
+    const isLoggedIn = computed(() => !!token.value);
 
-    // 用户角色
     const userRole = computed(() => {
-        if (!token.value) return null
+        if (!token.value) return null;
         try {
             const decodedToken = jwtDecode(token.value);
-            if (decodedToken.authorities && decodedToken.authorities.some(auth => auth.authority === 'ROLE_ADMIN')) {
-                return 'ADMIN'
-            }
-            return 'STUDENT'
+            const authorities = decodedToken.authorities || [];
+            if (authorities.some(auth => auth.authority === 'ROLE_ADMIN')) return 'ADMIN';
+            if (authorities.some(auth => auth.authority === 'ROLE_TEACHER')) return 'TEACHER';
+            if (authorities.some(auth => auth.authority === 'ROLE_STUDENT')) return 'STUDENT';
+            return null;
         } catch (error) {
             console.error("Token 解码失败", error);
-            // 如果 token 无效，执行登出操作
-            logout()
-            return null
+            logout();
+            return null;
         }
-    })
+    });
 
-    // 是否是管理员
-    const isAdmin = computed(() => userRole.value === 'ADMIN')
+    const isAdmin = computed(() => userRole.value === 'ADMIN');
+    const isTeacher = computed(() => userRole.value === 'TEACHER');
+    const isStudent = computed(() => userRole.value === 'STUDENT');
 
-    // --- Actions ---
     function setToken(newToken) {
-        token.value = newToken
+        token.value = newToken;
         if (newToken) {
-            localStorage.setItem('token', newToken)
+            localStorage.setItem('token', newToken);
         } else {
-            localStorage.removeItem('token')
+            localStorage.removeItem('token');
         }
     }
 
-    // 登录动作
     async function login(username, password) {
         try {
-            const response = await apiClient.post('/auth/authenticate', { username, password })
+            const response = await apiClient.post('/auth/authenticate', { username, password });
             const tokenValue = response.token;
-            setToken(tokenValue) // 设置token
+            setToken(tokenValue);
 
-            // 【关键修改】解码Token以获取角色
             const decodedToken = jwtDecode(tokenValue);
             const authorities = decodedToken.authorities || [];
 
-            // 判断角色并跳转
+            // 根据角色跳转到各自的主页
             if (authorities.some(auth => auth.authority === 'ROLE_ADMIN')) {
-                await router.push('/dashboard') // 管理员跳转到主页概览
+                await router.push({ name: 'AdminHome' });
+            } else if (authorities.some(auth => auth.authority === 'ROLE_TEACHER')) {
+                await router.push({ name: 'TeacherDashboard' });
             } else if (authorities.some(auth => auth.authority === 'ROLE_STUDENT')) {
-                await router.push('/my-profile') // 学生跳转到个人中心
+                await router.push({ name: 'StudentProfile' });
             } else {
-                await router.push('/') // 默认跳转
+                await router.push('/login');
             }
 
-            return true
+            return true;
         } catch (error) {
-            console.error("登录失败:", error)
-            return false
+            console.error("登录失败:", error);
+            return false;
         }
     }
 
-    // 登出动作
     function logout() {
-        setToken(null) // 清空 token
-        router.push('/login') // 跳转到登录页
+        setToken(null);
+        router.push('/login');
     }
 
-    // 返回 state, getters, 和 actions
     return {
         token,
         isLoggedIn,
         userRole,
         isAdmin,
+        isTeacher,
+        isStudent,
         login,
         logout,
-    }
-})
+    };
+});

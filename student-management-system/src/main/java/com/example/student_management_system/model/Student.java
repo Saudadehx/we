@@ -52,9 +52,6 @@ public class Student implements UserDetails {
     private Double gpa;
     private String photoUrl;
 
-    @JsonIgnore
-    private Set<Grade> grades = new HashSet<>();
-
     // --- 构造函数 ---
     public Student() {
     }
@@ -102,8 +99,6 @@ public class Student implements UserDetails {
     public void setGpa(Double gpa) { this.gpa = gpa; }
     public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
-    public Set<Grade> getGrades() { return grades; }
-    public void setGrades(Set<Grade> grades) { this.grades = grades; }
 
     // --- UserDetails 接口实现 ---
     @Override

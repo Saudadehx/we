@@ -31,6 +31,13 @@
         SELECT * FROM students WHERE id = #{id}
     </select>
 
+    <select id="findByIds" parameterType="java.util.List" resultMap="StudentResultMap">
+        SELECT * FROM students
+        WHERE id IN
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
     <select id="findByStudentId" parameterType="string" resultMap="StudentResultMap">
         SELECT * FROM students WHERE student_id = #{studentId}
     </select>

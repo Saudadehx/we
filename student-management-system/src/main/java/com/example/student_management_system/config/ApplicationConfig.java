@@ -2,6 +2,7 @@ package com.example.student_management_system.config;
 
 import com.example.student_management_system.mapper.StudentMapper;
 import com.example.student_management_system.mapper.UserMapper;
+import com.example.student_management_system.mapper.TeacherMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ public class ApplicationConfig {
 
     private final UserMapper userMapper;
     private final StudentMapper studentMapper;
+    private final TeacherMapper teacherMapper;
 
     @Bean
     public UserDetailsService userDetailsService() {
@@ -31,15 +33,18 @@ public class ApplicationConfig {
                 // 如果在管理员表中找到了，就直接返回
                 return user;
             }
-
-            // 如果不是管理员，再尝试作为学生在students表中查找
+            // 2. 尝试作为教师查找 (使用教师工号)
+            UserDetails teacher = teacherMapper.findByTeacherId(username);
+            if (teacher != null) {
+                return teacher;
+            }
+            // 如果不是教师，再尝试作为学生在students表中查找
             UserDetails student = studentMapper.findByStudentId(username);
             if (student != null) {
                 // 如果在学生表中找到了，就返回
                 return student;
             }
-
-            // 如果两个表都找不到，才抛出异常
+            // 如果都找不到，才抛出异常
             throw new UsernameNotFoundException("在任何表中都未找到用户: " + username);
         };
     }

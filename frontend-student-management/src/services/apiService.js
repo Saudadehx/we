@@ -7,30 +7,33 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, error => {
-  return Promise.reject(error);
-});
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, error => Promise.reject(error));
 
 apiClient.interceptors.response.use(
-    response => {
-      const res = response.data;
-      if (res.success) {
-        return res.data;
-      }
-      const error = new Error(res.message || 'Error');
-      error.code = res.code;
-      return Promise.reject(error);
-    },
-    error => {
-      console.error('API Error:', error);
-      return Promise.reject(error);
-    }
+    response => response.data.success ? response.data.data : Promise.reject(response.data),
+    error => Promise.reject(error.response?.data || error)
 );
+
+export const teacherService = {
+    getAll: () => apiClient.get('/teachers'),
+    create: (teacherData) => apiClient.post('/teachers', teacherData),
+    getMyCourses: () => apiClient.get('/teachers/me/courses'),
+};
+
+export const courseService = {
+    getAll: () => apiClient.get('/courses'),
+    create: (courseData) => apiClient.post('/courses', courseData),
+};
+
+export const enrollmentService = {
+    getForCourse: (courseId) => apiClient.get(`/teachers/me/courses/${courseId}/enrollments`),
+    updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
+};
 
 // 学生管理相关的API保持不变
 export const studentService = {
@@ -41,9 +44,6 @@ export const studentService = {
     updateStudent(id, studentData) { return apiClient.put(`/students/${id}`, studentData); },
     deleteStudent(id) { return apiClient.delete(`/students/${id}`); },
     getMyProfile() { return apiClient.get('/my-profile'); },
-    updateMyProfile(profileData) { return apiClient.put('/my-profile', profileData); }
-
+    updateMyProfile(profileData) { return apiClient.put('/my-profile', profileData); },
+    getMyCoursesAndGrades: () => apiClient.get('/students/me/enrollments')
 };
-
-// 注意：authService 和对 jwt-decode, authStore 的导入都已移除
-// 因为相关逻辑已经迁移到 stores/auth.js 中

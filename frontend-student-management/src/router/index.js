@@ -1,30 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '@/stores/auth'; // 1. 导入 auth store
+import { useAuthStore } from '@/stores/auth';
 import Login from '@/views/Login.vue';
-import StudentDashboard from '@/views/StudentDashboard.vue';
-import DashboardHome from '@/views/DashboardHome.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
-  { path: '/', redirect: '/dashboard' },
-  {
-    path: '/dashboard',
-    name: 'DashboardHome',
-    component: DashboardHome,
-    meta: { requiresAuth: true, roles: ['ADMIN'] } // 2. 指定此页面只允许 ADMIN 访问
-  },
-  {
-    path: '/students',
-    name: 'StudentDashboard',
-    component: StudentDashboard,
-    meta: { requiresAuth: true, roles: ['ADMIN'] } // 2. 指定此页面只允许 ADMIN 访问
-  },
-  {
-    path: '/my-profile',
-    name: 'MyProfile',
-    component: () => import('@/views/MyProfile.vue'),
-    meta: { requiresAuth: true, roles: ['STUDENT'] } // 2. 指定此页面只允许 STUDENT 访问
-  },
+  { path: '/', redirect: '/login' },
+
+  // --- 管理员路由 ---
+  { path: '/dashboard/home', name: 'AdminHome', component: () => import('@/views/DashboardHome.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/dashboard/students', name: 'AdminStudentMgmt', component: () => import('@/views/StudentDashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/dashboard/courses', name: 'AdminCourseMgmt', component: () => import('@/views/admin/CourseManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/dashboard/teachers', name: 'AdminTeacherMgmt', component: () => import('@/views/admin/TeacherManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+
+  // --- 教师路由 ---
+  { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('@/views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/course/:id/grades', name: 'GradeEntry', component: () => import('@/views/teacher/GradeEntry.vue'), props: true, meta: { requiresAuth: true, roles: ['TEACHER'] } },
+
+  // --- 学生路由 ---
+  { path: '/student/profile', name: 'StudentProfile', component: () => import('@/views/MyProfile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/courses', name: 'StudentCourses', component: () => import('@/views/student/MyCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
 ];
 
 const router = createRouter({
@@ -32,37 +26,26 @@ const router = createRouter({
   routes
 });
 
-// 3. 【核心修改】升级全局路由守卫
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const isLoggedIn = authStore.isLoggedIn;
+  const userRole = authStore.userRole;
 
-  // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (!isLoggedIn) {
-      // 如果需要认证但未登录，跳转到登录页
       next({ name: 'Login' });
     } else {
-      // 如果已登录，检查角色权限
-      const userRole = authStore.userRole; // 'ADMIN' 或 'STUDENT'
       if (to.meta.roles && !to.meta.roles.includes(userRole)) {
-        // 如果此页面需要特定角色，但当前用户角色不匹配
-        // (例如，学生试图访问管理员页面)
-        // 则不允许访问，可以跳转到其各自的主页
-        if (userRole === 'ADMIN') {
-          next({ name: 'DashboardHome' });
-        } else if (userRole === 'STUDENT') {
-          next({ name: 'MyProfile' });
-        } else {
-          next({ name: 'Login' });
-        }
+        // 角色不匹配，跳转到各自的主页
+        if (userRole === 'ADMIN') next({ name: 'AdminHome' });
+        else if (userRole === 'TEACHER') next({ name: 'TeacherDashboard' });
+        else if (userRole === 'STUDENT') next({ name: 'StudentProfile' });
+        else next({ name: 'Login' });
       } else {
-        // 角色匹配，允许访问
-        next();
+        next(); // 权限匹配，放行
       }
     }
   } else {
-    // 不需要认证的页面（如登录页），直接放行
     next();
   }
 });

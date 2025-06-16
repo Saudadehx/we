@@ -8,6 +8,7 @@ import java.util.List;
 public interface StudentMapper {
     List<Student> findAll();
     Student findById(Long id);
+    List<Student> findByIds(List<Long> ids);
     Student findByStudentId(String studentId);
     void insert(Student student);
     int update(Student student);
