@@ -2,7 +2,7 @@
   <div class="list-container">
     <div class="list-header">
       <h4>学生列表</h4>
-      <button v-if="isAdmin" @click="requestAddStudent" class="add-btn" title="新增学生">+</button>
+      <button v-if="isAdmin" @click="requestAddStudent" class="add-btn-text">新增学生</button>
     </div>
 
     <div class="student-groups">
@@ -115,7 +115,13 @@ const requestAddStudent = () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  user-select: none; /* 标准浏览器 */
+  -webkit-user-select: none; /* 兼容 Chrome, Safari, Opera */
+  -moz-user-select: none; /* 兼容 Firefox */
+  -ms-user-select: none;
 }
+/* 在 StudentList.vue 的 <style scoped> 中 */
+
 .list-header {
   display: flex;
   justify-content: space-between;
@@ -128,21 +134,21 @@ const requestAddStudent = () => {
   margin: 0;
   font-size: 1.1em;
 }
-.add-btn {
+
+.add-btn-text {
   background-color: #198754;
   color: white;
   border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-size: 22px;
-  line-height: 26px; /* 微调使+号居中 */
-  text-align: center;
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s;
 }
-.add-btn:hover {
-  transform: scale(1.1);
+.add-btn-text:hover {
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 /* 分组样式 */
@@ -190,7 +196,7 @@ const requestAddStudent = () => {
 .student-item {
   display: flex;
   align-items: center;
-  padding: 8px 10px 8px 50px; /* 学生项进一步缩进 */
+  padding: 3px 10px 3px 30px; /* 学生项进一步缩进 */
   cursor: pointer;
   border-radius: 4px;
 }
@@ -198,8 +204,8 @@ const requestAddStudent = () => {
   background-color: #e9ecef;
 }
 .avatar {
-  width: 35px;
-  height: 35px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   margin-right: 10px;
 }
