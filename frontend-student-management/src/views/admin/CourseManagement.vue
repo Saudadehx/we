@@ -91,7 +91,6 @@ import { ref, onMounted } from 'vue';
 import { courseService, teacherService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
 
-// ... data refs and other functions ...
 const courses = ref([]);
 const teachers = ref([]);
 const isLoading = ref(true);
@@ -109,14 +108,35 @@ const editableCourse = ref({
   courseTime: null,
 });
 
-const fetchCourses = async () => { /* ... no change ... */ };
-const fetchTeachers = async () => { /* ... no change ... */ };
+// 修复 fetchCourses 函数实现
+const fetchCourses = async () => {
+  isLoading.value = true;
+  try {
+    courses.value = await courseService.getAll();
+  } catch (error) {
+    showNotification(error.message || '获取课程列表失败', 'error');
+    console.error('获取课程列表失败:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 获取教师列表
+const fetchTeachers = async () => {
+  try {
+    teachers.value = await teacherService.getAll();
+  } catch (error) {
+    showNotification(error.message || '获取教师列表失败', 'error');
+    console.error('获取教师列表失败:', error);
+  }
+};
+
 onMounted(() => {
   fetchCourses();
   fetchTeachers();
 });
 
-// 【新增】格式化时间显示的辅助函数
+// 格式化时间显示的辅助函数
 const formatCourseTime = (day, time) => {
   if (!day || !time) return '未安排';
   const dayStr = '星期' + '一二三四五六日'[day-1];
@@ -124,21 +144,40 @@ const formatCourseTime = (day, time) => {
   return `${dayStr} ${timeStr}`;
 };
 
-// ... resetForm, openAddModal, openEditModal, closeModal, handleSubmit, handleDeleteCourse ...
-// 这些函数基本不变，只是需要确保在 resetForm 和 openEditModal 中处理新字段
+// 重置表单
 const resetForm = () => {
   editableCourse.value = {
-    id: null, courseId: '', courseName: '', credits: null, teacherId: '',
-    courseDay: null, courseTime: null // 重置时间字段
+    id: null,
+    courseId: '',
+    courseName: '',
+    credits: null,
+    teacherId: '',
+    courseDay: null,
+    courseTime: null
   };
 };
 
+// 打开新增模态框
+const openAddModal = () => {
+  resetForm();
+  isEditing.value = false;
+  showModal.value = true;
+};
+
+// 打开编辑模态框
 const openEditModal = (course) => {
-  editableCourse.value = { ...course }; // 直接拷贝即可，因为DTO字段名一致
+  editableCourse.value = { ...course };
   isEditing.value = true;
   showModal.value = true;
 };
-// handleSubmit 里的 payload 需包含新字段
+
+// 关闭模态框
+const closeModal = () => {
+  showModal.value = false;
+  resetForm();
+};
+
+// 提交表单
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
@@ -156,8 +195,23 @@ const handleSubmit = async () => {
     await fetchCourses();
   } catch (error) {
     showNotification(error.message || '操作失败', 'error');
+    console.error('课程操作失败:', error);
   } finally {
     isSubmitting.value = false;
+  }
+};
+
+// 删除课程
+const handleDeleteCourse = async (courseId) => {
+  if (!confirm('确定要删除这门课程吗？')) return;
+
+  try {
+    await courseService.delete(courseId);
+    showNotification('课程删除成功！', 'success');
+    await fetchCourses();
+  } catch (error) {
+    showNotification(error.message || '删除失败', 'error');
+    console.error('删除课程失败:', error);
   }
 };
 
