@@ -1,75 +1,67 @@
+/* src/style.css */
+
+/* 1. 定义全局设计变量 (CSS Custom Properties) */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* 色彩规范 */
+  --color-primary: #337ab7; /* 主题色，用于按钮、链接、高亮等 */
+  --color-primary-light: #eaf2f8; /* 主题色的浅色，用于背景 */
+  --color-text-primary: #2c3e50; /* 主要文字颜色 */
+  --color-text-secondary: #7f8c8d; /* 次要文字、提示信息颜色 */
+  --color-background: #f4f6f8;   /* 页面主背景色 */
+  --color-surface: #ffffff;     /* 卡片、表单等元素的背景色 */
+  --color-border: #e0e6ed;      /* 边框颜色 */
+  --color-success: #28a745;     /* 成功状态色 */
+  --color-danger: #dc3545;      /* 危险、删除状态色 */
+  --color-warning: #ffc107;     /* 警告状态色 */
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* 字体规范 */
+  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-size-base: 16px;
+  --line-height-base: 1.6;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* 间距规范 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* 其他 */
+  --border-radius: 8px; /* 圆角大小 */
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 卡片阴影 */
+  --transition-speed: 0.3s; /* 动画过渡速度 */
+}
+
+/* 2. 全局样式重置和基础设置 */
+body {
+  margin: 0;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.card {
-  padding: 2em;
-}
-
 #app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* 3. 美化滚动条 (可选，但能提升细节体验) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }

@@ -24,18 +24,15 @@
 <script setup>
 import Notification from '@/components/Notification.vue';
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { isLoggedIn } from '@/services/authStore';
-import { authService } from '@/services/apiService';
+import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
-const router = useRouter();
 const route = useRoute();
-
+const authStore = useAuthStore();
 const isLoginPage = computed(() => route.name === 'Login');
-
+const isLoggedIn = computed(() => authStore.isLoggedIn);
 const logout = () => {
-  authService.logout();
-  router.push('/login');
+  authStore.logout();
 };
 </script>
 
@@ -52,10 +49,10 @@ const logout = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
-  height: 64px; /* 固定高度 */
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 0 var(--spacing-xl); /* 使用变量 */
+  height: 64px;
+  background-color: var(--color-surface); /* 使用变量 */
+  border-bottom: 1px solid var(--color-border); /* 使用变量 */
   flex-shrink: 0;
   z-index: 10;
 }
@@ -63,42 +60,48 @@ const logout = () => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: var(--spacing-md); /* 使用变量，增加间距 */
 }
+
 .logo {
   width: 32px;
   height: 32px;
-  margin-right: 12px;
-  color: #337ab7;
-}
-.logo svg {
-  width: 100%;
-  height: 100%;
+  color: var(--color-primary); /* 使用变量 */
 }
 
 .header-left h1 {
   margin: 0;
-  font-size: 1.5em;
+  font-size: 1.4em;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--color-text-primary); /* 使用变量 */
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm); /* 使用变量 */
 }
 
 .header-nav a {
   text-decoration: none;
-  color: #555;
+  color: var(--color-text-secondary); /* 使用变量 */
   font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 6px;
-  margin-left: 8px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  padding: var(--spacing-sm) var(--spacing-md); /* 使用变量 */
+  border-radius: var(--border-radius); /* 使用变量 */
+  transition: all var(--transition-speed) ease; /* 使用变量 */
 }
+
 .header-nav a:hover {
-  background-color: #f5f5f5;
-  color: #337ab7;
+  background-color: var(--color-primary-light); /* 使用变量 */
+  color: var(--color-primary); /* 使用变量 */
 }
+
+/* 当前激活的路由链接样式 */
 .header-nav a.router-link-exact-active {
-  background-color: #337ab7;
-  color: white;
+  background-color: var(--color-primary); /* 使用变量 */
+  color: var(--color-surface);
 }
+
 .logout-link {
   cursor: pointer;
 }
@@ -107,8 +110,9 @@ const logout = () => {
   flex-grow: 1;
   display: flex;
   overflow: hidden;
-  background-color: #f4f7f6;
+  background-color: var(--color-background); /* 使用变量 */
 }
+
 .app-main.center-content {
   justify-content: center;
   align-items: center;

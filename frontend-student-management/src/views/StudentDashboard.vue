@@ -3,127 +3,148 @@
     <div class="student-list-panel">
       <StudentList
           :students="students"
+          :selected-student-id="selectedStudent ? selectedStudent.id : null"
           @student-selected="handleStudentSelect"
-          @add-student-requested="handleAddStudent"
+          @add-student-requested="handleAddNewStudent"
       />
     </div>
+
     <div class="student-detail-panel">
       <StudentDetail
-          v-if="selectedStudent || isCreating"
+          v-if="selectedStudent"
           :student="selectedStudent"
-          :is-creating="isCreating"
-          :key="selectedStudent ? selectedStudent.id : 'new'"
-          @student-updated="refreshStudentList"
-          @student-created="handleStudentCreated"
-          @student-deleted="handleStudentDeleted"
+          :key="selectedStudent.id || 'new-student-form'"
+          @create-student="handleCreateStudent"
+          @update-student="handleUpdateStudent"
+          @delete-student="handleDeleteStudent"
       />
       <div v-else class="placeholder">
         <div class="placeholder-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16">
-            <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.957 12.287c-.545.636-.99 1.17-1.255 1.65a.5.5 0 0 1-.415.263H2.5a.5.5 0 0 1 0-1h1.043c.101-.16.208-.322.321-.479L5 11.231l.008-.002A.274.274 0 0 1 5 11.23zM5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
         </div>
-        <p>请从左侧选择学生以查看详情</p>
-        <span>或点击左上角的“新增学生”按钮来创建档案</span>
+        <h3 class="placeholder-title">查看学生详情</h3>
+        <p class="placeholder-text">请从左侧列表中选择一位学生，<br>或点击“新增”按钮来创建一份新的学生档案。</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+// Script部分无需修改
 import { ref, onMounted } from 'vue';
 import { studentService } from '@/services/apiService';
+import { showNotification } from '@/services/notificationStore.js';
 import StudentList from '@/components/StudentList.vue';
 import StudentDetail from '@/components/StudentDetail.vue';
 
 const students = ref([]);
 const selectedStudent = ref(null);
-const isCreating = ref(false);
 
 const fetchStudents = async () => {
   try {
-    const response = await studentService.getAllStudents();
-    students.value = response.data;
+    students.value = await studentService.getAllStudents();
   } catch (error) {
-    console.error('获取学生列表失败:', error);
+    showNotification('获取学生列表失败', 'error');
   }
 };
-
 onMounted(fetchStudents);
 
 const handleStudentSelect = (student) => {
-  isCreating.value = false;
   selectedStudent.value = student;
 };
 
-const handleAddStudent = () => {
-  selectedStudent.value = null; // 清空当前选择
-  isCreating.value = true; // 进入创建模式
+const handleAddNewStudent = () => {
+  const newStudentTemplate = {
+    studentId: '', name: '', gender: '男', dateOfBirth: '', className: '', major: '', gpa: null, photoUrl: ''
+  };
+  selectedStudent.value = newStudentTemplate;
 };
 
-const refreshStudentList = async () => {
-  isCreating.value = false;
-  await fetchStudents();
+const handleCreateStudent = async (formData) => {
+  try {
+    const newStudent = await studentService.createStudent(formData);
+    showNotification('学生创建成功！', 'success');
+    await fetchStudents();
+    const created = students.value.find(s => s.studentId === newStudent.studentId);
+    selectedStudent.value = created || null;
+  } catch (error) {
+    showNotification(`创建失败: ${error.message}`, 'error');
+  }
 };
 
-const handleStudentCreated = async (newStudent) => {
-  isCreating.value = false;
-  await fetchStudents();
-  // 创建成功后，自动选中这个新学生
-  selectedStudent.value = newStudent;
+const handleUpdateStudent = async (formData) => {
+  try {
+    const updatedStudent = await studentService.updateStudent(formData.id, formData);
+    showNotification('学生信息更新成功！', 'success');
+    await fetchStudents();
+    selectedStudent.value = updatedStudent;
+  } catch (error) {
+    showNotification(`保存失败: ${error.message}`, 'error');
+    await fetchStudents();
+  }
 };
 
-const handleStudentDeleted = async () => {
-  selectedStudent.value = null;
-  isCreating.value = false;
-  await fetchStudents();
+const handleDeleteStudent = async (studentId) => {
+  if (window.confirm('确定要删除这位学生吗？此操作不可撤销。')) {
+    try {
+      await studentService.deleteStudent(studentId);
+      showNotification('学生已删除。', 'success');
+      selectedStudent.value = null;
+      await fetchStudents();
+    } catch (error) {
+      showNotification(`删除失败: ${error.message}`, 'error');
+    }
+  }
 };
-
 </script>
 
 <style scoped>
 .dashboard-container {
   display: flex;
-  height: 100%; /* 关键：占满父元素 .app-main 的全部高度 */
+  height: 100%;
   width: 100%;
 }
 .student-list-panel {
   width: 300px;
-  border-right: 1px solid #e0e0e0;
-  background-color: #fff;
-
-  /* 关键：让左侧面板成为一个flex容器，内部分配空间 */
-  display: flex;
-  flex-direction: column;
+  flex-shrink: 0; /* 防止列表面板被压缩 */
 }
 .student-detail-panel {
   flex-grow: 1;
-
-  /* 关键：让右侧面板成为一个flex容器，内部分配空间 */
   display: flex;
   flex-direction: column;
 }
 .placeholder {
   display: flex;
-  flex-direction: column; /* 改为垂直布局 */
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: #b0bec5; /* 使用更柔和的颜色 */
   text-align: center;
-  user-select: none; /* 文字不可选中 */
+  color: var(--color-text-secondary); /* 使用全局变量 */
+  padding: var(--spacing-xl); /* 使用全局变量 */
+  box-sizing: border-box;
 }
+
 .placeholder-icon {
-  margin-bottom: 2rem;
-  color: #eceff1; /* 图标颜色更浅，作为背景装饰 */
+  color: var(--color-border); /* 使用一个柔和的颜色 */
+  margin-bottom: var(--spacing-lg);
 }
-.placeholder p {
+
+.placeholder-title {
   font-size: 1.5em;
-  margin: 0;
-  color: #78909c;
+  font-weight: 600;
+  color: var(--color-text-primary); /* 使用更深的文字颜色 */
+  margin: 0 0 var(--spacing-sm) 0;
 }
-.placeholder span {
-  font-size: 1em;
-  margin-top: 0.5rem;
+
+.placeholder-text {
+  max-width: 400px;
+  line-height: var(--line-height-base);
+  margin: 0;
 }
 </style>
