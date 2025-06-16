@@ -2,29 +2,28 @@
   <div class="detail-container">
     <div class="header">
       <h3>{{ student.name }}的详细信息</h3>
-      <button v-if="isAdmin && !isEditing" @click="isEditing = true">编辑</button>
-      <div v-if="isEditing" class="error-message">
-        {{ errorMessage }}
+      <div>
+        <button v-if="isAdmin && !isEditing" @click="isEditing = true">编辑</button>
+        <button v-if="isEditing" class="save-btn" @click="saveChanges">保存</button>
+        <button v-if="isEditing" class="cancel-btn" @click="cancelEdit">取消</button>
       </div>
-      <div v-if="isEditing">
-        <button class="save-btn" @click="saveChanges">保存</button>
-        <button class="cancel-btn" @click="cancelEdit">取消</button>
-      </div>
-      <div v-if="isEditing">
-        <button class="save-btn" @click="saveChanges">保存</button>
-        <button class="cancel-btn" @click="cancelEdit">取消</button>
-      </div>
+    </div>
+
+    <div v-if="isEditing && errorMessage" class="error-message">
+      {{ errorMessage }}
     </div>
 
     <div class="info-grid">
       <div class="info-item">
         <label>姓名</label>
         <span v-if="!isEditing">{{ editableStudent.name }}</span>
-        <input v-else type="text" v-model="editableStudent.name">
+        <input v-else type="text" v-model="editableStudent.name" :class="{ 'input-error': fieldErrors.name }">
       </div>
       <div class="info-item">
         <label>学号</label>
-        <span>{{ editableStudent.studentId }}</span> </div>
+        <span v-if="!isEditing">{{ editableStudent.studentId }}</span>
+        <input v-else type="text" v-model="editableStudent.studentId">
+      </div>
       <div class="info-item">
         <label>专业</label>
         <span v-if="!isEditing">{{ editableStudent.major }}</span>
@@ -47,6 +46,8 @@
 <script setup>
 import { studentService, authService } from '@/services/apiService';
 import { ref, watch, computed } from 'vue';
+import { showNotification } from '@/services/notificationStore.js';
+
 const props = defineProps({
   student: {
     type: Object,
@@ -60,6 +61,7 @@ const isEditing = ref(false);
 const editableStudent = ref({ ...props.student });
 const isAdmin = computed(() => authService.getUserRole() === 'ADMIN');
 const errorMessage = ref('');
+const fieldErrors = ref({});
 
 // 监听 props.student 的变化，当父组件选择新学生时更新表单
 watch(() => props.student, (newStudent) => {
@@ -69,20 +71,24 @@ watch(() => props.student, (newStudent) => {
 
 const saveChanges = async () => {
   errorMessage.value = '';
+  fieldErrors.value = {};
   try {
     await studentService.updateStudent(props.student.id, editableStudent.value);
     isEditing.value = false;
     emit('student-updated'); // 通知父组件更新成功
-    alert('更新成功！');
+    showNotification('更新成功！', 'success');
   } catch (error) {
-    console.error('更新失败:', error);
     if (error.response && error.response.data) {
-      // 如果后端返回了结构化的错误信息，例如 { "name": "姓名长度必须在2到50之间" }
       const errorData = error.response.data;
-      // 将所有错误信息拼接起来显示
-      errorMessage.value = Object.values(errorData).join('; ');
+      if (typeof errorData === 'object') {
+        // 如果后端返回的是字段错误对象，例如 { "name": "姓名太短" }
+        fieldErrors.value = errorData; // <--- 将错误对象存起来
+        errorMessage.value = "请修正标记为红色的字段。";
+      } else {
+        errorMessage.value = errorData;
+      }
     } else {
-      errorMessage.value = '发生未知错误，请稍后再试。';
+      showNotification(Object.values(error.response.data).join('; ') || '未知错误');
     }
   }
 };
@@ -138,6 +144,10 @@ const cancelEdit = () => {
   border-radius: 4px;
   margin-top: 15px;
   text-align: center;
+}
+.input-error {
+  border: 1px solid #D8000C !important; /* 用红色边框高亮 */
+  box-shadow: 0 0 5px rgba(216, 0, 12, 0.3);
 }
 button {
   margin-left: 10px;

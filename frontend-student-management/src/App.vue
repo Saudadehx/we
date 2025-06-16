@@ -1,5 +1,6 @@
 <template>
   <div id="app-container">
+    <Notification />
     <header class="app-header" v-if="!isLoginPage">
       <h1>学生管理系统</h1>
       <nav>
@@ -23,7 +24,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { isLoggedIn } from '@/services/authStore';
 import { authService } from '@/services/apiService';
-
+import Notification from '@/components/Notification.vue';
 const router = useRouter();
 const route = useRoute();
 
