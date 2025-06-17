@@ -39,13 +39,11 @@
 </template>
 
 <script setup>
-// Script部分略有修改，以支持active状态
 import { ref, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
   students: { type: Array, required: true },
-  // 假设从父组件传入当前选中的学生ID
   selectedStudentId: { type: [Number, null], default: null }
 });
 const emit = defineEmits(['student-selected', 'add-student-requested']);
@@ -53,16 +51,32 @@ const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.isAdmin);
 const expandedState = ref({});
 
+const getGradeFromClassName = (className) => {
+  if (!className) return '未分类';
+  // 匹配 "计科2501班" 中的 "25" 或 "23数据一班" 中的 "23"
+  const match = className.match(/(\d{2})/);
+  return match ? `${match[1]}级` : '未分类';
+};
+
 const groupedStudents = computed(() => {
   const groups = {};
   if (!props.students) return {};
-  props.students.forEach(student => {
-    if (!student.className) return;
-    const gradeMatch = student.className.match(/^\d+/);
-    const grade = gradeMatch ? `${gradeMatch[0]}级` : '未分类';
+  // 先按年级排序，再按班级名排序
+  const sortedStudents = [...props.students].sort((a, b) => {
+    const gradeA = getGradeFromClassName(a.className);
+    const gradeB = getGradeFromClassName(b.className);
+    if (gradeA !== gradeB) {
+      return gradeA.localeCompare(gradeB);
+    }
+    return a.className.localeCompare(b.className);
+  });
+
+  sortedStudents.forEach(student => {
+    const grade = getGradeFromClassName(student.className);
+    const className = student.className || '未知班级';
     if (!groups[grade]) groups[grade] = {};
-    if (!groups[grade][student.className]) groups[grade][student.className] = [];
-    groups[grade][student.className].push(student);
+    if (!groups[grade][className]) groups[grade][className] = [];
+    groups[grade][className].push(student);
   });
   return groups;
 });

@@ -18,6 +18,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -142,7 +143,7 @@ public class EnrollmentService {
         }
 
         List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentDbId);
-        if (!enrollments.isEmpty()) {
+        if (!CollectionUtils.isEmpty(enrollments)) {
             List<Long> enrolledCourseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
             if (enrolledCourseIds.contains(courseDbId)) {
                 throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
@@ -221,63 +222,46 @@ public class EnrollmentService {
 
         enrollmentMapper.deleteById(enrollmentId);
     }
+
     /**
-     * 新增：为特定专业的特定年级的学生，预置本学期的必修课
-     * @param majorId 专业ID
-     * @param academicYear 学年
-     * @param semester 学期
-     * @return 成功分配课程的学生数量
+     * 【新增】为单个学生自动分配其学年和学期对应的必修课
+     * @param student 需要分配课程的学生对象
      */
     @Transactional
-    public int assignCompulsoryCourses(Long majorId, Integer academicYear, Integer semester) {
-        // 1. 找出所有符合条件的必修课
+    public void assignCompulsoryCoursesForStudent(Student student) {
+        if (student == null || student.getId() == null || student.getMajorId() == null || student.getAcademicYear() == null || student.getSemester() == null) {
+            // 如果学生关键信息不完整，则不执行任何操作
+            return;
+        }
+
+        // 1. 找出该学生对应的所有必修课
         Map<String, Object> courseParams = Map.of(
-                "majorId", majorId,
-                "academicYear", academicYear,
-                "semester", semester,
+                "majorId", student.getMajorId(),
+                "academicYear", student.getAcademicYear(),
+                "semester", student.getSemester(),
                 "courseType", "COMPULSORY"
         );
-        // 为了使用这个Map，我们需要一个支持多条件查询的CourseMapper方法
-        // 我们需要去CourseMapper.xml和CourseMapper.java中添加
         List<Course> compulsoryCourses = courseMapper.findAll(courseParams);
-
         if (compulsoryCourses.isEmpty()) {
-            throw new ResourceNotFoundException("未找到该专业、学年、学期的必修课程。");
+            return; // 没有找到对应的必修课，直接返回
         }
 
-        // 2. 找出所有符合条件的学生
-        // 我们也需要一个新的StudentMapper方法来按专业和学年查找
-        Map<String, Object> studentParams = Map.of(
-                "majorId", majorId,
-                "academicYear", academicYear
-        );
-        // 去StudentMapper.xml和.java中添加 findByMajorAndYear
-        List<Student> students = studentMapper.findAll(studentParams); // 假设findAll支持这些参数
+        // 2. 获取该学生已有的所有选课记录
+        List<Enrollment> currentEnrollments = enrollmentMapper.findByStudentId(student.getId());
+        Set<Long> enrolledCourseIds = currentEnrollments.stream()
+                .map(Enrollment::getCourseId)
+                .collect(Collectors.toSet());
 
-        if (students.isEmpty()) {
-            throw new ResourceNotFoundException("未找到该专业、学年的学生。");
-        }
-
-        int assignedCount = 0;
-        // 3. 为每个学生分配必修课
-        for (Student student : students) {
-            List<Enrollment> currentEnrollments = enrollmentMapper.findByStudentId(student.getId());
-            Set<Long> enrolledCourseIds = currentEnrollments.stream()
-                    .map(Enrollment::getCourseId)
-                    .collect(Collectors.toSet());
-
-            for (Course course : compulsoryCourses) {
-                // 如果学生尚未选择这门课，则为他自动选择
-                if (!enrolledCourseIds.contains(course.getId())) {
-                    Enrollment newEnrollment = new Enrollment();
-                    newEnrollment.setStudentId(student.getId());
-                    newEnrollment.setCourseId(course.getId());
-                    enrollmentMapper.insert(newEnrollment);
-                }
+        // 3. 遍历必修课，如果学生尚未选择，则为其自动注册
+        for (Course course : compulsoryCourses) {
+            if (!enrolledCourseIds.contains(course.getId())) {
+                Enrollment newEnrollment = new Enrollment();
+                newEnrollment.setStudentId(student.getId());
+                newEnrollment.setCourseId(course.getId());
+                // 成绩默认为null
+                enrollmentMapper.insert(newEnrollment);
             }
-            assignedCount++;
         }
-        return assignedCount;
     }
 
     /**
@@ -335,6 +319,4 @@ public class EnrollmentService {
 
         return availableCourses;
     }
-
-    // ... (其他方法保持不变) ...
 }

@@ -14,13 +14,15 @@
           <th>类型</th>
           <th>所属专业</th>
           <th>学分</th>
+          <th>学年</th>
+          <th>学期</th>
           <th>授课教师</th>
           <th>操作</th>
         </tr>
         </thead>
         <tbody>
         <tr v-if="isLoading">
-          <td colspan="7" style="text-align: center; padding: 20px;">正在加载数据...</td>
+          <td colspan="9" style="text-align: center; padding: 20px;">正在加载数据...</td>
         </tr>
         <tr v-for="course in courses" :key="course.id">
           <td>{{ course.courseId }}</td>
@@ -28,6 +30,8 @@
           <td>{{ course.courseType === 'COMPULSORY' ? '必修' : '选修' }}</td>
           <td>{{ course.majorName || '通用' }}</td>
           <td>{{ course.credits }}</td>
+          <td>{{ formatAcademicYear(course.academicYear) }}</td>
+          <td>{{ formatSemester(course.semester) }}</td>
           <td>{{ course.teacherName }}</td>
           <td>
             <button @click="openEditModal(course)" class="action-btn edit">编辑</button>
@@ -162,6 +166,16 @@ const fetchAllData = async () => {
 };
 
 onMounted(fetchAllData);
+
+const formatAcademicYear = (year) => {
+  return year ? `第 ${year} 学年` : '不限';
+};
+
+const formatSemester = (semester) => {
+  if (semester === 1) return '上学期';
+  if (semester === 2) return '下学期';
+  return '不限';
+};
 
 const resetForm = () => editableCourse.value = getNewEditableCourse();
 

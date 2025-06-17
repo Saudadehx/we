@@ -25,7 +25,6 @@
           <td>{{ major.description }}</td>
           <td>
             <button @click="openEditModal(major)" class="action-btn edit">编辑</button>
-            <button @click="openAssignModal(major)" class="action-btn assign">分配课程</button>
             <button @click="handleDeleteMajor(major.id)" class="action-btn delete">删除</button>
           </td>
         </tr>
@@ -53,51 +52,20 @@
       </div>
     </div>
 
-    <div v-if="showAssignModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <h2>为【{{ targetMajor.name }}】分配必修课</h2>
-        <p>此操作将为该专业下指定年级和学期的所有学生，自动选上对应的必修课程。</p>
-        <form @submit.prevent="handleAssignSubmit">
-          <div class="form-group">
-            <label for="academicYear">选择学年</label>
-            <select v-model="assignParams.academicYear" id="academicYear" required>
-              <option disabled value="">请选择</option>
-              <option v-for="n in 4" :key="n" :value="n">第 {{ n }} 学年</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="semester">选择学期</label>
-            <select v-model="assignParams.semester" id="semester" required>
-              <option disabled value="">请选择</option>
-              <option value="1">上学期</option>
-              <option value="2">下学期</option>
-            </select>
-          </div>
-          <div class="modal-actions">
-            <button type="button" @click="closeModal">取消</button>
-            <button type="submit" :disabled="isSubmitting">{{ isSubmitting ? '分配中...' : '确认分配' }}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { majorService, enrollmentService } from '@/services/apiService'; // 引入 enrollmentService
+import { majorService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
 
 const majors = ref([]);
 const isLoading = ref(true);
 const isSubmitting = ref(false);
 const showEditModal = ref(false);
-const showAssignModal = ref(false); // 新增
 const isEditing = ref(false);
 const editableMajor = ref({ id: null, name: '', description: '' });
-const targetMajor = ref(null); // 新增
-const assignParams = ref({ academicYear: '', semester: '' }); // 新增
 
 const fetchMajors = async () => {
   isLoading.value = true;
@@ -114,8 +82,6 @@ onMounted(fetchMajors);
 
 const resetForm = () => {
   editableMajor.value = { id: null, name: '', description: '' };
-  assignParams.value = { academicYear: '', semester: '' };
-  targetMajor.value = null;
 };
 
 const openAddModal = () => {
@@ -130,15 +96,8 @@ const openEditModal = (major) => {
   showEditModal.value = true;
 };
 
-const openAssignModal = (major) => {
-  resetForm();
-  targetMajor.value = major;
-  showAssignModal.value = true;
-};
-
 const closeModal = () => {
   showEditModal.value = false;
-  showAssignModal.value = false;
   resetForm();
 };
 
@@ -162,23 +121,6 @@ const handleSubmit = async () => {
   }
 };
 
-const handleAssignSubmit = async () => {
-  isSubmitting.value = true;
-  try {
-    const response = await enrollmentService.assignCompulsoryCourses(
-        targetMajor.value.id,
-        assignParams.value.academicYear,
-        assignParams.value.semester
-    );
-    showNotification(response.message || '课程分配成功！', 'success');
-    closeModal();
-  } catch (error) {
-    showNotification(error.message || '分配失败', 'error');
-  } finally {
-    isSubmitting.value = false;
-  }
-};
-
 const handleDeleteMajor = async (id) => {
   if (!confirm('确定要删除这个专业吗？相关的学生和课程信息可能会受影响。')) return;
   try {
@@ -195,10 +137,6 @@ const handleDeleteMajor = async (id) => {
 @import '@/assets/styles/common-page.css';
 @import '@/assets/styles/common-modal.css';
 
-.action-btn.assign {
-  color: var(--color-success);
-  background-color: #eaf6ec;
-}
 textarea {
   width: 100%;
   padding: 10px;

@@ -43,17 +43,12 @@
             <td>{{ formatCourseTime(course.courseDay, course.courseTime) }}</td>
             <td class="action-col">
               <template v-if="isEnrolled(course.id)">
-                <button
-                    v-if="canWithdraw(course.id)"
-                    @click="handleWithdraw(getEnrollmentId(course.id))"
-                    class="action-btn withdraw-btn"
-                    :disabled="isWithdrawing"
-                >
+                  <span v-if="isCompulsory(course.id) || hasGrade(course.id)" class="status-tag non-withdrawable-tag">
+                      不可退
+                  </span>
+                <button v-else @click="handleWithdraw(getEnrollmentId(course.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
                   退课
                 </button>
-                <span v-else class="status-tag enrolled-tag">
-                    {{ hasGrade(course.id) ? '已有成绩' : (isCompulsory(course.id) ? '必修' : '已选') }}
-                </span>
               </template>
               <template v-else>
                 <button
@@ -79,8 +74,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { courseService, enrollmentService, studentService } from '@/services/apiService';
+import { ref, onMounted, computed, watch } from 'vue';
+import { enrollmentService, studentService } from '@/services/apiService';
 import { apiService as systemSettingApiService } from '@/services/systemSettingService';
 import { showNotification } from '@/services/notificationStore';
 
@@ -94,15 +89,20 @@ const isSelectionOpen = ref(false);
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    const [statusRes, coursesRes, enrollmentsRes] = await Promise.all([
-      systemSettingApiService.getCourseSelectionStatus(),
-      // 【修改】调用新的专属接口
-      enrollmentService.getAvailableCourses(),
-      studentService.getMyCoursesAndGrades()
-    ]);
+    // 步骤 1: 首先获取选课通道状态
+    const statusRes = await systemSettingApiService.getCourseSelectionStatus();
     isSelectionOpen.value = statusRes.isOpen;
-    availableCourses.value = coursesRes;
-    myEnrollments.value = enrollmentsRes;
+
+    // 步骤 2: 仅当通道开启时，才获取课程数据
+    if (isSelectionOpen.value) {
+      const [coursesRes, enrollmentsRes] = await Promise.all([
+        enrollmentService.getAvailableCourses(),
+        studentService.getMyCoursesAndGrades()
+      ]);
+      availableCourses.value = coursesRes;
+      myEnrollments.value = enrollmentsRes;
+    }
+    // 如果通道关闭，则不执行任何额外的数据获取
   } catch (error) {
     showNotification(error.message || '数据加载失败', 'error');
   } finally {
@@ -112,16 +112,20 @@ const fetchData = async () => {
 
 onMounted(fetchData);
 
-const myEnrollmentMap = computed(() => new Map(myEnrollments.value.map(e => [e.courseId, e])));
-const myCourseMap = computed(() => {
+const myCourseMap = ref(new Map());
+watch(availableCourses, (newCourses) => {
   const map = new Map();
-  availableCourses.value.forEach(c => map.set(c.id, c));
-  return map;
-});
+  newCourses.forEach(c => map.set(c.id, c));
+  myCourseMap.value = map;
+}, { deep: true });
 
 const mySchedule = computed(() => new Set(myEnrollments.value.filter(e => e.courseDay && e.courseTime).map(e => `${e.courseDay}-${e.courseTime}`)));
 
-const isEnrolled = (courseDbId) => myEnrollments.value.some(e => e.courseId === myCourseMap.value.get(courseDbId)?.courseId);
+const isEnrolled = (courseDbId) => {
+  const course = myCourseMap.value.get(courseDbId);
+  if (!course) return false;
+  return myEnrollments.value.some(e => e.courseId === course.courseId);
+};
 
 const getEnrollmentId = (courseDbId) => {
   const course = myCourseMap.value.get(courseDbId);
@@ -139,10 +143,6 @@ const hasGrade = (courseDbId) => {
 const isCompulsory = (courseDbId) => {
   const course = myCourseMap.value.get(courseDbId);
   return course && course.courseType === 'COMPULSORY';
-};
-
-const canWithdraw = (courseDbId) => {
-  return isEnrolled(courseDbId) && !hasGrade(courseDbId) && !isCompulsory(courseDbId);
 };
 
 const hasConflict = (course) => {
@@ -201,5 +201,67 @@ const formatCourseTime = (day, time) => {
 }
 .course-type.elective {
   background-color: var(--color-success);
+}
+.status-tag {
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.9em;
+  background-color: #e9ecef;
+  color: var(--color-text-secondary);
+}
+.non-withdrawable-tag {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+.action-btn {
+  margin-right: 8px;
+  padding: 6px 12px;
+  border-radius: var(--border-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+.action-btn:disabled {
+  background-color: #e9ecef !important;
+  color: #adb5bd !important;
+  cursor: not-allowed;
+  border-color: transparent !important;
+}
+.enroll-btn {
+  background-color: var(--color-success);
+  color: white;
+}
+.withdraw-btn {
+  background-color: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+.withdraw-btn:hover {
+  background-color: var(--color-danger);
+  color: white;
+}
+.closed-notice {
+  text-align: center;
+  padding: 40px;
+}
+.closed-notice .notice-icon {
+  font-size: 48px;
+  color: var(--color-warning);
+}
+.closed-notice h2 {
+  margin: 16px 0;
+}
+.closed-notice p {
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  margin: 0 auto 24px auto;
+}
+.closed-notice .action-btn {
+  background-color: var(--color-primary);
+  color: white;
+  text-decoration: none;
 }
 </style>

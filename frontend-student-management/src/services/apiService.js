@@ -83,8 +83,6 @@ export const enrollmentService = {
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
     enrollInCourse: (courseId) => apiClient.post('/students/me/enrollments', { courseId }),
     dropCourse: (enrollmentId) => apiClient.delete(`/students/me/enrollments/${enrollmentId}`),
-    assignCompulsoryCourses: (majorId, academicYear, semester) => apiClient.post('/enrollments/assign-compulsory', { majorId, academicYear, semester }),
-    // 【新增】调用学生可选课程列表的接口
     getAvailableCourses: () => apiClient.get('/students/me/available-courses'),
 };
 

@@ -1,7 +1,10 @@
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.TeacherDTO;
+import com.example.student_management_system.dto.TeacherDetailDTO;
+import com.example.student_management_system.mapper.CourseMapper;
 import com.example.student_management_system.mapper.TeacherMapper;
+import com.example.student_management_system.model.Course;
 import com.example.student_management_system.model.Teacher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -9,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // 导入
 import org.springframework.util.StringUtils; // 导入
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,6 +22,9 @@ public class TeacherService {
 
     @Autowired
     private TeacherMapper teacherMapper;
+
+    @Autowired
+    private CourseMapper courseMapper; // 注入CourseMapper
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -45,16 +53,33 @@ public class TeacherService {
     }
 
     /**
-     * 获取所有教师列表，用于管理员界面展示
-     * @return 教师信息列表（不含密码）
+     * 【修改】获取所有教师列表，并附带他们所教授的课程信息
+     * @return 包含课程信息的教师列表
      */
-    public List<TeacherDTO> getAllTeachers() {
-        return teacherMapper.findAll().stream().map(teacher -> {
-            TeacherDTO dto = new TeacherDTO();
-            dto.setTeacherId(teacher.getTeacherId());
-            // 【新增】返回数据库的ID，方便前端操作
+    public List<TeacherDetailDTO> getAllTeachersWithCourses() {
+        List<Teacher> teachers = teacherMapper.findAll();
+        if (teachers.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 一次性获取所有课程，避免N+1查询
+        List<Course> allCourses = courseMapper.findAll(Collections.emptyMap());
+
+        // 按教师ID将课程分组
+        Map<Long, List<String>> coursesByTeacherId = allCourses.stream()
+                .filter(course -> course.getTeacherId() != null)
+                .collect(Collectors.groupingBy(
+                        Course::getTeacherId,
+                        Collectors.mapping(Course::getCourseName, Collectors.toList())
+                ));
+
+        // 组装最终的DTO列表
+        return teachers.stream().map(teacher -> {
+            TeacherDetailDTO dto = new TeacherDetailDTO();
             dto.setId(teacher.getId());
+            dto.setTeacherId(teacher.getTeacherId());
             dto.setName(teacher.getName());
+            dto.setTaughtCourses(coursesByTeacherId.getOrDefault(teacher.getId(), Collections.emptyList()));
             return dto;
         }).collect(Collectors.toList());
     }
@@ -94,6 +119,8 @@ public class TeacherService {
             throw new ResourceNotFoundException("ID为 " + id + " 的教师不存在，无法删除。");
         }
         // 在实际项目中，删除教师前可能还需要检查该教师是否关联了课程
+        // 【注意】这里需要先处理关联的课程，比如将其teacher_id设为null
+        courseMapper.disassociateTeacherFromCourses(id);
         teacherMapper.deleteById(id);
     }
 }

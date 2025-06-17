@@ -12,6 +12,7 @@
           <th>ID</th>
           <th>教师工号</th>
           <th>姓名</th>
+          <th>所授课程</th>
           <th>操作</th>
         </tr>
         </thead>
@@ -20,6 +21,12 @@
           <td>{{ teacher.id }}</td>
           <td>{{ teacher.teacherId }}</td>
           <td>{{ teacher.name }}</td>
+          <td>
+            <span v-if="teacher.taughtCourses && teacher.taughtCourses.length > 0">
+              {{ teacher.taughtCourses.join(', ') }}
+            </span>
+            <span v-else class="no-courses">暂未分配课程</span>
+          </td>
           <td>
             <button @click="openEditModal(teacher)" class="action-btn edit">编辑</button>
             <button @click="handleDeleteTeacher(teacher.id)" class="action-btn delete">删除</button>
@@ -61,11 +68,10 @@ import { teacherService } from '@/services/apiService.js';
 import { showNotification } from '@/services/notificationStore.js';
 
 const teachers = ref([]);
-const showModal = ref(false); // 【修改】统一控制弹窗显示
-const isEditing = ref(false); // 【新增】标记当前是新增还是编辑
-const isSubmitting = ref(false); // 【新增】防止重复提交
+const showModal = ref(false);
+const isEditing = ref(false);
+const isSubmitting = ref(false);
 
-// 【修改】用于表单数据绑定的对象
 const editableTeacher = ref({
   id: null,
   teacherId: '',
@@ -75,6 +81,7 @@ const editableTeacher = ref({
 
 const fetchTeachers = async () => {
   try {
+    // 后端返回的是 TeacherDetailDTO
     teachers.value = await teacherService.getAll();
   } catch (error) {
     showNotification('获取教师列表失败', 'error');
@@ -83,47 +90,45 @@ const fetchTeachers = async () => {
 
 onMounted(fetchTeachers);
 
-// 【新增】一个重置表单的函数
 const resetForm = () => {
   editableTeacher.value = { id: null, teacherId: '', name: '', password: '' };
 };
 
-// 【新增】打开新增弹窗
 const openAddModal = () => {
   resetForm();
   isEditing.value = false;
   showModal.value = true;
 };
 
-// 【新增】打开编辑弹窗
 const openEditModal = (teacher) => {
-  // 深拷贝一份数据到表单，避免直接修改列表中的数据
-  editableTeacher.value = { ...teacher, password: '' };
+  // 注意：我们只编辑教师基本信息，taughtCourses 是只读的
+  editableTeacher.value = {
+    id: teacher.id,
+    teacherId: teacher.teacherId,
+    name: teacher.name,
+    password: '' // 密码字段留空
+  };
   isEditing.value = true;
   showModal.value = true;
 };
 
-// 【新增】关闭弹窗
 const closeModal = () => {
   showModal.value = false;
   resetForm();
 };
 
-// 【修改】统一处理提交逻辑
 const handleSubmit = async () => {
   isSubmitting.value = true;
   try {
     if (isEditing.value) {
-      // 执行更新操作
       await teacherService.update(editableTeacher.value.id, editableTeacher.value);
       showNotification('教师信息更新成功！', 'success');
     } else {
-      // 执行创建操作
       await teacherService.create(editableTeacher.value);
       showNotification('教师创建成功！', 'success');
     }
     closeModal();
-    await fetchTeachers(); // 重新加载列表
+    await fetchTeachers();
   } catch (error) {
     showNotification(error.message || '操作失败', 'error');
   } finally {
@@ -131,13 +136,12 @@ const handleSubmit = async () => {
   }
 };
 
-// 【新增】删除教师的逻辑
 const handleDeleteTeacher = async (id) => {
-  if (window.confirm('确定要删除这位教师吗？此操作不可撤销。')) {
+  if (window.confirm('确定要删除这位教师吗？该教师所有课程的授课教师将被置空。')) {
     try {
       await teacherService.delete(id);
       showNotification('教师删除成功！', 'success');
-      await fetchTeachers(); // 重新加载列表
+      await fetchTeachers();
     } catch (error) {
       showNotification(error.message || '删除失败', 'error');
     }
@@ -148,4 +152,9 @@ const handleDeleteTeacher = async (id) => {
 <style scoped>
 @import '@/assets/styles/common-page.css';
 @import '@/assets/styles/common-modal.css';
+
+.no-courses {
+  color: #999;
+  font-style: italic;
+}
 </style>

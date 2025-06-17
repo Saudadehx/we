@@ -13,7 +13,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -23,12 +23,14 @@ public class StudentService {
     private final StudentMapper studentMapper;
     private final PasswordEncoder passwordEncoder;
     private final MajorMapper majorMapper;
+    private final EnrollmentService enrollmentService; // 注入EnrollmentService
 
     @Autowired
-    public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder, MajorMapper majorMapper) {
+    public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder, MajorMapper majorMapper, EnrollmentService enrollmentService) {
         this.studentMapper = studentMapper;
         this.passwordEncoder = passwordEncoder;
         this.majorMapper = majorMapper;
+        this.enrollmentService = enrollmentService; // 初始化
     }
 
     private StudentResponseDTO convertToResponseDto(Student student) {
@@ -113,6 +115,9 @@ public class StudentService {
 
         if (StringUtils.hasText(studentDto.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
+        } else {
+            // 如果密码为空，可以设置一个默认密码，或抛出异常
+            throw new IllegalArgumentException("初始密码不能为空。");
         }
 
         student.setName(studentDto.getName());
@@ -135,7 +140,12 @@ public class StudentService {
         student.setSemester(studentDto.getSemester());
 
         studentMapper.insert(student);
+        // 插入后，student对象还没有数据库ID，需要重新查询一次
         Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
+
+        // 【核心修改】为新创建的学生自动分配必修课
+        enrollmentService.assignCompulsoryCoursesForStudent(createdStudent);
+
         return convertToResponseDto(createdStudent);
     }
 
@@ -146,6 +156,10 @@ public class StudentService {
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生。");
         }
+        // 记录旧的学籍信息，用于判断是否需要重新分配课程
+        Long oldMajorId = student.getMajorId();
+        Integer oldAcademicYear = student.getAcademicYear();
+        Integer oldSemester = student.getSemester();
 
         if (studentDetails.getStudentId() != null && !studentDetails.getStudentId().equals(student.getStudentId())) {
             Student studentWithNewStudentId = studentMapper.findByStudentId(studentDetails.getStudentId());
@@ -180,6 +194,16 @@ public class StudentService {
         if (affectedRows == 0) {
             throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
         }
+
+        // 【核心修改】检查学籍信息是否有变，如有则重新分配课程
+        boolean academicInfoChanged = !Objects.equals(oldMajorId, student.getMajorId()) ||
+                !Objects.equals(oldAcademicYear, student.getAcademicYear()) ||
+                !Objects.equals(oldSemester, student.getSemester());
+
+        if (academicInfoChanged) {
+            enrollmentService.assignCompulsoryCoursesForStudent(student);
+        }
+
         return convertToResponseDto(student);
     }
 

@@ -94,6 +94,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="disassociateTeacherFromCourses" parameterType="long">
+        UPDATE courses
+        SET teacher_id = NULL
+        WHERE teacher_id = #{teacherId}
+    </update>
+
     <delete id="deleteById" parameterType="long">
         DELETE FROM courses WHERE id = #{id}
     </delete>

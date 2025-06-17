@@ -3,6 +3,7 @@ package com.example.student_management_system.controller;
 import com.example.student_management_system.dto.ApiResult;
 import com.example.student_management_system.dto.CourseResponseDTO;
 import com.example.student_management_system.dto.TeacherDTO;
+import com.example.student_management_system.dto.TeacherDetailDTO;
 import com.example.student_management_system.model.Teacher;
 import com.example.student_management_system.service.CourseService;
 import com.example.student_management_system.service.TeacherService;
@@ -26,8 +27,8 @@ public class TeacherController {
     // --- 管理员接口 ---
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResult<List<TeacherDTO>> getAllTeachers() {
-        return ApiResult.success(teacherService.getAllTeachers());
+    public ApiResult<List<TeacherDetailDTO>> getAllTeachers() {
+        return ApiResult.success(teacherService.getAllTeachersWithCourses());
     }
 
     @PostMapping

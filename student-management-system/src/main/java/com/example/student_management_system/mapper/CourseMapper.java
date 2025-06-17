@@ -2,6 +2,8 @@ package com.example.student_management_system.mapper;
 
 import com.example.student_management_system.model.Course;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
 import java.util.List;
 import java.util.Map;
 
@@ -16,4 +18,5 @@ public interface CourseMapper {
     void insert(Course course);
     int update(Course course);
     void deleteById(Long id);
+    void disassociateTeacherFromCourses(@Param("teacherId") Long teacherId); // 新增方法
 }
