@@ -74,7 +74,7 @@ export const enrollmentService = {
     getForCourse: (courseId) => apiClient.get(`/teachers/me/courses/${courseId}/enrollments`),
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
     enrollInCourse: (courseId) => apiClient.post('/students/me/enrollments', { courseId }),
-    // 学生退课接口
+    // 【修改】学生退课接口现在接收 enrollmentId
     dropCourse: (enrollmentId) => apiClient.delete(`/students/me/enrollments/${enrollmentId}`),
 };
 

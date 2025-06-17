@@ -5,11 +5,11 @@ import com.example.student_management_system.dto.EnrollmentResponseDTO;
 import com.example.student_management_system.mapper.CourseMapper;
 import com.example.student_management_system.mapper.EnrollmentMapper;
 import com.example.student_management_system.mapper.StudentMapper;
-import com.example.student_management_system.mapper.TeacherMapper; // 新增导入
+import com.example.student_management_system.mapper.TeacherMapper;
 import com.example.student_management_system.model.Course;
 import com.example.student_management_system.model.Enrollment;
 import com.example.student_management_system.model.Student;
-import com.example.student_management_system.model.Teacher; // 新增导入
+import com.example.student_management_system.model.Teacher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
@@ -35,14 +35,11 @@ public class EnrollmentService {
     @Autowired
     private StudentMapper studentMapper;
     @Autowired
-    private TeacherMapper teacherMapper; // 新增注入
+    private TeacherMapper teacherMapper;
+    @Autowired
+    private SystemSettingService systemSettingService; // 新增：注入SystemSettingService
 
-    /**
-     * 教师获取其某门课程的学生花名册及成绩
-     * @param courseId 课程的数据库ID
-     * @param teacherId 当前登录教师的数据库ID
-     * @return 学生成绩列表
-     */
+    // ... getEnrollmentsByCourseForTeacher 方法保持不变 ...
     @Transactional(readOnly = true)
     public List<EnrollmentResponseDTO> getEnrollmentsByCourseForTeacher(Long courseId, Long teacherId) {
         Course course = courseMapper.findById(courseId);
@@ -74,12 +71,8 @@ public class EnrollmentService {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * 教师更新成绩
-     * @param enrollmentId 选课记录的ID
-     * @param score 新的分数
-     * @param teacherId 当前登录教师的ID
-     */
+
+    // ... updateGrade 方法保持不变 ...
     @Transactional
     public void updateGrade(Long enrollmentId, Double score, Long teacherId) {
         Enrollment enrollment = enrollmentMapper.findById(enrollmentId);
@@ -93,9 +86,7 @@ public class EnrollmentService {
         enrollmentMapper.updateScore(enrollmentId, score);
     }
 
-    /**
-     * 学生获取自己的所有成绩，并附带课程时间信息和教师姓名
-     */
+    // ... getEnrollmentsForStudent 方法保持不变 ...
     @Transactional(readOnly = true)
     public List<EnrollmentResponseDTO> getEnrollmentsForStudent(Long studentId) {
         List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentId);
@@ -108,12 +99,11 @@ public class EnrollmentService {
         Map<Long, Course> courseMap = courses.stream()
                 .collect(Collectors.toMap(Course::getId, Function.identity()));
 
-        // 新增：获取所有相关教师的信息
         Set<Long> teacherIds = courses.stream()
                 .map(Course::getTeacherId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        List<Teacher> teachers = teacherMapper.findByIds(List.copyOf(teacherIds)); // 假设TeacherMapper有findByIds方法
+        List<Teacher> teachers = teacherIds.isEmpty() ? Collections.emptyList() : teacherMapper.findByIds(List.copyOf(teacherIds));
         Map<Long, Teacher> teacherMap = teachers.stream()
                 .collect(Collectors.toMap(Teacher::getId, Function.identity()));
 
@@ -129,7 +119,6 @@ public class EnrollmentService {
                 dto.setCourseDay(course.getCourseDay());
                 dto.setCourseTime(course.getCourseTime());
 
-                // 【关键修改】设置教师姓名
                 Teacher teacher = teacherMap.get(course.getTeacherId());
                 dto.setTeacherName(teacher != null ? teacher.getName() : "未知教师");
             }
@@ -137,31 +126,33 @@ public class EnrollmentService {
         }).collect(Collectors.toList());
     }
 
+
     /**
-     * 学生为自己选课 (或管理员为指定学生选课的内部调用方法)
-     * @param courseDbId 要选修课程的数据库ID
-     * @param studentDbId 当前登录学生的数据库ID
-     * @return 创建的选课记录
+     * 学生为自己选课，增加了对选课通道状态的检查
      */
     @Transactional
     public Enrollment enrollCourseForStudent(Long courseDbId, Long studentDbId) {
+        // 【规则检查1】检查选课通道是否开启
+        if (!systemSettingService.isCourseSelectionOpen()) {
+            throw new IllegalStateException("当前非选课时间，无法进行操作。");
+        }
+
         Course targetCourse = courseMapper.findById(courseDbId);
         if (targetCourse == null) {
             throw new ResourceNotFoundException("ID为 " + courseDbId + " 的课程不存在。");
         }
 
-        // --- 时间冲突检测逻辑 ---
         List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentDbId);
         if (!enrollments.isEmpty()) {
             List<Long> enrolledCourseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
             List<Course> enrolledCourses = courseMapper.findByIds(enrolledCourseIds);
 
             for (Course enrolledCourse : enrolledCourses) {
-                // 确保不与自身或其他未安排时间的课程进行冲突判断
                 if (enrolledCourse.getId().equals(courseDbId)) {
                     throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
                 }
                 if (enrolledCourse.getCourseDay() != null && enrolledCourse.getCourseTime() != null &&
+                        targetCourse.getCourseDay() != null && targetCourse.getCourseTime() != null &&
                         Objects.equals(enrolledCourse.getCourseDay(), targetCourse.getCourseDay()) &&
                         Objects.equals(enrolledCourse.getCourseTime(), targetCourse.getCourseTime())) {
                     throw new IllegalArgumentException("选课失败：与已选课程 '" + enrolledCourse.getCourseName() + "' 时间冲突。");
@@ -177,18 +168,12 @@ public class EnrollmentService {
         try {
             enrollmentMapper.insert(enrollment);
         } catch (DataIntegrityViolationException e) {
-            // 捕获数据库唯一性约束异常，这通常意味着重复选课
-            // 虽然上面做了业务逻辑的重复选课判断，但数据库层面的约束也是一道防线
             throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
         }
         return enrollment;
     }
 
-    /**
-     * [管理员方法] 管理员为学生选课
-     * @param enrollmentDTO 包含学生学号和课程编号
-     * @return 创建的选课记录
-     */
+    // ... createEnrollment 方法保持不变 ...
     @Transactional
     public Enrollment createEnrollment(EnrollmentDTO enrollmentDTO) {
         Student student = studentMapper.findByStudentId(enrollmentDTO.getStudentId());
@@ -200,29 +185,34 @@ public class EnrollmentService {
         if (course == null) {
             throw new ResourceNotFoundException("课程编号为 " + enrollmentDTO.getCourseId() + " 的课程不存在。");
         }
-        // 【优化】直接调用已有的 enrollCourseForStudent 方法
         return enrollCourseForStudent(course.getId(), student.getId());
     }
 
+
     /**
-     * 学生退课
-     * @param enrollmentId 选课记录的数据库ID
-     * @param studentId 当前登录学生的数据库ID
+     * 学生退课，增加了对选课通道和成绩的检查
      */
     @Transactional
     public void dropCourse(Long enrollmentId, Long studentId) {
-        // 1. 查找选课记录是否存在
+        // 【规则检查1】检查选课/退课通道是否开启
+        if (!systemSettingService.isCourseSelectionOpen()) {
+            throw new IllegalStateException("当前非退课时间，无法进行操作。");
+        }
+
         Enrollment enrollment = enrollmentMapper.findById(enrollmentId);
         if (enrollment == null) {
             throw new ResourceNotFoundException("该选课记录不存在。");
         }
 
-        // 2. 验证该选课记录是否属于当前学生
         if (!enrollment.getStudentId().equals(studentId)) {
             throw new AccessDeniedException("您无权退选不属于您的课程。");
         }
 
-        // 3. 执行删除操作 (退课)
+        // 【规则检查2】检查课程是否已有成绩
+        if (enrollment.getScore() != null) {
+            throw new IllegalStateException("该课程已有成绩，无法退选。");
+        }
+
         enrollmentMapper.deleteById(enrollmentId);
     }
 }

@@ -1,8 +1,5 @@
 <template>
   <aside class="sidebar-container">
-    <!-- 玻璃反光效果层 -->
-    <div class="glass-overlay"></div>
-
     <div class="profile-section">
       <div class="avatar">{{ userInitial }}</div>
       <div class="user-info">
@@ -25,6 +22,9 @@
         <router-link to="/dashboard/teachers" class="nav-item">
           <span class="nav-text">教师管理</span>
         </router-link>
+        <router-link to="/dashboard/settings" class="nav-item">
+          <span class="nav-text">系统设置</span>
+        </router-link>
       </template>
 
       <template v-if="authStore.isTeacher">
@@ -37,14 +37,11 @@
         <router-link to="/student/profile" class="nav-item">
           <span class="nav-text">我的档案</span>
         </router-link>
-        <router-link to="/student/courses" class="nav-item">
-          <span class="nav-text">我的课程</span>
+        <router-link to="/student/schedule" class="nav-item">
+          <span class="nav-text">课表与成绩</span>
         </router-link>
         <router-link to="/student/available-courses" class="nav-item">
           <span class="nav-text">选课中心</span>
-        </router-link>
-        <router-link to="/student/timetable" class="nav-item">
-          <span class="nav-text">我的课表</span>
         </router-link>
       </template>
     </nav>
@@ -87,6 +84,7 @@ const userRoleText = computed(() => {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .sidebar-container {
   position: relative;
   display: flex;

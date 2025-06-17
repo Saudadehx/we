@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.SystemSettingMapper">
+
+    <resultMap id="SystemSettingResultMap" type="com.example.student_management_system.model.SystemSetting">
+        <id property="id" column="id"/>
+        <result property="settingKey" column="setting_key"/>
+        <result property="settingValue" column="setting_value"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <select id="findByKey" parameterType="string" resultMap="SystemSettingResultMap">
+        SELECT id, setting_key, setting_value, description FROM system_settings WHERE setting_key = #{settingKey}
+    </select>
+
+    <update id="updateValue">
+        UPDATE system_settings SET setting_value = #{settingValue} WHERE setting_key = #{settingKey}
+    </update>
+
+</mapper>
