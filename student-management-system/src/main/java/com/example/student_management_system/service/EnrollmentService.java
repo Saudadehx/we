@@ -52,7 +52,6 @@ public class EnrollmentService {
         }
 
         List<Long> studentIds = enrollments.stream().map(Enrollment::getStudentId).collect(Collectors.toList());
-        // 优化：仅查询相关的学生
         List<Student> students = studentMapper.findByIds(studentIds);
         Map<Long, Student> studentMap = students.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
@@ -122,26 +121,31 @@ public class EnrollmentService {
     }
 
     /**
-     * 学生为自己选课
-     * @param courseId 要选修课程的数据库ID
-     * @param studentId 当前登录学生的数据库ID
+     * 学生为自己选课 (或管理员为指定学生选课的内部调用方法)
+     * @param courseDbId 要选修课程的数据库ID
+     * @param studentDbId 当前登录学生的数据库ID
      * @return 创建的选课记录
      */
     @Transactional
-    public Enrollment enrollCourseForStudent(Long courseId, Long studentId) {
-        Course targetCourse = courseMapper.findById(courseId);
+    public Enrollment enrollCourseForStudent(Long courseDbId, Long studentDbId) {
+        Course targetCourse = courseMapper.findById(courseDbId);
         if (targetCourse == null) {
-            throw new ResourceNotFoundException("ID为 " + courseId + " 的课程不存在。");
+            throw new ResourceNotFoundException("ID为 " + courseDbId + " 的课程不存在。");
         }
 
         // --- 时间冲突检测逻辑 ---
-        List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentId);
+        List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentDbId);
         if (!enrollments.isEmpty()) {
             List<Long> enrolledCourseIds = enrollments.stream().map(Enrollment::getCourseId).collect(Collectors.toList());
             List<Course> enrolledCourses = courseMapper.findByIds(enrolledCourseIds);
 
             for (Course enrolledCourse : enrolledCourses) {
-                if (Objects.equals(enrolledCourse.getCourseDay(), targetCourse.getCourseDay()) &&
+                // 确保不与自身或其他未安排时间的课程进行冲突判断
+                if (enrolledCourse.getId().equals(courseDbId)) {
+                    throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
+                }
+                if (enrolledCourse.getCourseDay() != null && enrolledCourse.getCourseTime() != null &&
+                        Objects.equals(enrolledCourse.getCourseDay(), targetCourse.getCourseDay()) &&
                         Objects.equals(enrolledCourse.getCourseTime(), targetCourse.getCourseTime())) {
                     throw new IllegalArgumentException("选课失败：与已选课程 '" + enrolledCourse.getCourseName() + "' 时间冲突。");
                 }
@@ -149,13 +153,15 @@ public class EnrollmentService {
         }
 
         Enrollment enrollment = new Enrollment();
-        enrollment.setStudentId(studentId);
-        enrollment.setCourseId(courseId);
+        enrollment.setStudentId(studentDbId);
+        enrollment.setCourseId(courseDbId);
         enrollment.setScore(null);
 
         try {
             enrollmentMapper.insert(enrollment);
         } catch (DataIntegrityViolationException e) {
+            // 捕获数据库唯一性约束异常，这通常意味着重复选课
+            // 虽然上面做了业务逻辑的重复选课判断，但数据库层面的约束也是一道防线
             throw new IllegalArgumentException("您已选修此课程，请勿重复选择。");
         }
         return enrollment;
@@ -177,7 +183,7 @@ public class EnrollmentService {
         if (course == null) {
             throw new ResourceNotFoundException("课程编号为 " + enrollmentDTO.getCourseId() + " 的课程不存在。");
         }
-
+        // 【优化】直接调用已有的 enrollCourseForStudent 方法
         return enrollCourseForStudent(course.getId(), student.getId());
     }
 

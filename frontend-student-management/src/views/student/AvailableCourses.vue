@@ -54,6 +54,11 @@
             </button>
           </td>
         </tr>
+        <tr v-if="availableCourses.length === 0">
+          <td colspan="6" style="text-align: center; padding: 20px;">
+            暂无课程或未找到符合条件的课程。
+          </td>
+        </tr>
         </tbody>
       </table>
     </div>
@@ -99,10 +104,17 @@ const resetSearch = () => {
   fetchData();
 };
 
+/**
+ * 计算属性：获取当前学生已选课程的 courseId 集合
+ * 【修正】使用 courseId 来判断，因为这是课程的唯一标识符
+ */
 const enrolledCourseIds = computed(() => {
   return new Set(myEnrollments.value.map(e => e.courseId));
 });
 
+/**
+ * 计算属性：获取当前学生课表的时间段集合
+ */
 const mySchedule = computed(() => {
   const scheduleSet = new Set();
   myEnrollments.value.forEach(e => {
@@ -121,30 +133,33 @@ const formatCourseTime = (day, time) => {
 };
 
 /**
- * 【修复】判断课程是否已选
+ * 判断课程是否已选
  * @param {object} course - 完整的课程对象
  */
 const isEnrolled = (course) => {
+  // 【修正】使用 course.courseId 来判断是否已选
   return enrolledCourseIds.value.has(course.courseId);
 };
 
 /**
- * 【修复】判断课程是否时间冲突
- * 现在只在“未选”的课程里判断冲突，避免和自身冲突
+ * 判断课程是否时间冲突
+ * 【修正】只在“未选”的课程里判断冲突，避免和自身冲突
  * @param {object} course - 完整的课程对象
  */
 const hasConflict = (course) => {
   // 如果课程已选，我们不把它标记为冲突
   if (isEnrolled(course)) return false;
 
+  // 如果课程没有安排时间，不认为有冲突
   if (!course.courseDay || !course.courseTime) {
-    return false; // 未安排时间的课程不冲突
+    return false;
   }
+  // 检查是否与已选课程的时间发生冲突
   return mySchedule.value.has(`${course.courseDay}-${course.courseTime}`);
 };
 
 /**
- * 【新增】统一的按钮禁用逻辑
+ * 统一的按钮禁用逻辑
  */
 const isButtonDisabled = (course) => {
   if (enrollingId.value === course.id) return true; // 正在处理中，禁用
@@ -154,15 +169,15 @@ const isButtonDisabled = (course) => {
 };
 
 const handleEnroll = async (courseId) => {
-  enrollingId.value = courseId;
+  enrollingId.value = courseId; // 设置正在处理的课程ID
   try {
     await enrollmentService.enrollInCourse(courseId);
     showNotification('选课成功！', 'success');
-    await fetchData();
+    await fetchData(); // 重新加载数据以更新状态
   } catch (error) {
     showNotification(error.message || '选课失败', 'error');
   } finally {
-    enrollingId.value = null;
+    enrollingId.value = null; // 恢复处理状态
   }
 };
 </script>

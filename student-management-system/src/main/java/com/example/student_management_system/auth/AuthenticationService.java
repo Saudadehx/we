@@ -3,24 +3,27 @@ package com.example.student_management_system.auth;
 import com.example.student_management_system.mapper.UserMapper;
 import com.example.student_management_system.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // 导入 Slf4j
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetailsService; // 1. 导入
-import org.springframework.security.core.userdetails.UserDetails;    // 2. 导入
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.AuthenticationException; // 导入 AuthenticationException
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 
 @Service
 @RequiredArgsConstructor
+@Slf4j // 使用 Lombok 的 Slf4j 注解
 public class AuthenticationService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final UserDetailsService userDetailsService; // 3. 注入我们自定义的UserDetailsService
+    private final UserDetailsService userDetailsService;
 
-    // 注册管理员的逻辑保持不变
     public AuthenticationResponse register(RegisterRequest request) {
         var user = new com.example.student_management_system.model.User();
         user.setUsername(request.getUsername());
@@ -31,12 +34,10 @@ public class AuthenticationService {
         return AuthenticationResponse.builder().token(jwtToken).build();
     }
 
-    // 登录逻辑
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         try {
-            System.out.println("--- DEBUG: 准备认证用户: " + request.getUsername());
+            log.debug("准备认证用户: {}", request.getUsername()); // 使用日志
 
-            // 1. 认证步骤
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername(),
@@ -44,26 +45,24 @@ public class AuthenticationService {
                     )
             );
 
-            System.out.println("--- DEBUG: 用户 " + request.getUsername() + " 认证成功!");
+            log.debug("用户 {} 认证成功!", request.getUsername()); // 使用日志
 
-            // 2. 加载用户详情
             final UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
 
-            System.out.println("--- DEBUG: 成功加载UserDetails, 用户名: " + userDetails.getUsername() + ", 权限: " + userDetails.getAuthorities());
+            log.debug("成功加载UserDetails, 用户名: {}, 权限: {}", userDetails.getUsername(), userDetails.getAuthorities()); // 使用日志
 
-            // 3. 生成JWT令牌
-            System.out.println("--- DEBUG: 准备生成JWT令牌...");
+            log.debug("准备生成JWT令牌..."); // 使用日志
             var jwtToken = jwtService.generateToken(userDetails);
-            System.out.println("--- DEBUG: JWT令牌生成成功!");
+            log.debug("JWT令牌生成成功!"); // 使用日志
 
             return AuthenticationResponse.builder().token(jwtToken).build();
 
+        } catch (AuthenticationException e) { // 捕获更具体的认证异常
+            log.warn("认证失败: {}", e.getMessage()); // 使用日志
+            throw e; // 重新抛出认证异常，由全局异常处理器处理
         } catch (Exception e) {
-            // 4. 【关键】如果以上任何步骤出错，捕获异常并打印完整的错误信息
-            System.err.println("!!!!!!!!!! 认证过程中发生致命错误 !!!!!!!!!!");
-            e.printStackTrace(); // 这会把详细的错误“堆栈”打印到后端的控制台
-            // 重新抛出异常，这样前端看到的现象（500错误）和原来一样
-            throw new RuntimeException("认证服务内部错误", e);
+            log.error("认证过程中发生未知错误", e); // 使用日志记录完整堆栈
+            throw new RuntimeException("认证服务内部错误", e); // 抛出通用运行时异常
         }
     }
 }

@@ -33,6 +33,7 @@ public class EnrollmentController {
             @PathVariable Long courseId,
             @AuthenticationPrincipal Teacher teacher
     ) {
+        // 异常处理已在Service层完成，Controller层直接调用即可
         return ApiResult.success(enrollmentService.getEnrollmentsByCourseForTeacher(courseId, teacher.getId()));
     }
 
@@ -50,6 +51,7 @@ public class EnrollmentController {
             @RequestBody GradeUpdateDTO dto,
             @AuthenticationPrincipal Teacher teacher
     ) {
+        // 异常处理已在Service层完成，Controller层直接调用即可
         enrollmentService.updateGrade(enrollmentId, dto.getScore(), teacher.getId());
         return ApiResult.success();
     }
@@ -81,8 +83,10 @@ public class EnrollmentController {
     ) {
         Long courseId = payload.get("courseId");
         if (courseId == null) {
+            // 这种基本的参数校验仍然可以在Controller层保留，因为它不涉及复杂的业务逻辑
             throw new IllegalArgumentException("请求体中必须包含 courseId。");
         }
+        // 业务逻辑异常已在Service层处理，Controller层直接调用即可
         return ApiResult.success(enrollmentService.enrollCourseForStudent(courseId, student.getId()));
     }
 
@@ -98,6 +102,7 @@ public class EnrollmentController {
             @PathVariable Long enrollmentId,
             @AuthenticationPrincipal Student student
     ) {
+        // 业务逻辑异常已在Service层处理，Controller层直接调用即可
         enrollmentService.dropCourse(enrollmentId, student.getId());
         return ApiResult.success();
     }
@@ -112,6 +117,7 @@ public class EnrollmentController {
     @PostMapping("/enrollments")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResult<Enrollment> createEnrollment(@RequestBody EnrollmentDTO enrollmentDTO) {
+        // 业务逻辑异常已在Service层处理，Controller层直接调用即可
         return ApiResult.success(enrollmentService.createEnrollment(enrollmentDTO));
     }
 }

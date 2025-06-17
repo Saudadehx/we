@@ -20,16 +20,21 @@ const routes = [
   // --- 学生路由 ---
   { path: '/student/profile', name: 'StudentProfile', component: () => import('@/views/MyProfile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/courses', name: 'StudentCourses', component: () => import('@/views/student/MyCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  // 【新增】学生选课页面的路由
   { path: '/student/available-courses', name: 'StudentAvailableCourses', component: () => import('@/views/student/AvailableCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/timetable', name: 'StudentTimetable', component: () => import('@/views/student/MyTimetable.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
 ];
 
-// ... router.beforeEach 逻辑保持不变 ...
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 });
+
+// 定义角色与对应主页路由的映射
+const roleRedirectMap = {
+  'ADMIN': 'AdminHome',
+  'TEACHER': 'TeacherDashboard',
+  'STUDENT': 'StudentProfile'
+};
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
@@ -38,19 +43,25 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth) {
     if (!isLoggedIn) {
+      // 未登录，重定向到登录页
       next({ name: 'Login' });
     } else {
+      // 已登录
       if (to.meta.roles && !to.meta.roles.includes(userRole)) {
-        // 角色不匹配，跳转到各自的主页
-        if (userRole === 'ADMIN') next({ name: 'AdminHome' });
-        else if (userRole === 'TEACHER') next({ name: 'TeacherDashboard' });
-        else if (userRole === 'STUDENT') next({ name: 'StudentProfile' });
-        else next({ name: 'Login' });
+        // 角色不匹配，重定向到该角色对应的主页，如果没有对应主页则回登录页
+        const redirectRouteName = roleRedirectMap[userRole];
+        if (redirectRouteName) {
+          next({ name: redirectRouteName });
+        } else {
+          next({ name: 'Login' });
+        }
       } else {
-        next(); // 权限匹配，放行
+        // 权限匹配，放行
+        next();
       }
     }
   } else {
+    // 不需要认证的路径，直接放行
     next();
   }
 });

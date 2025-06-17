@@ -13,7 +13,10 @@
         <template v-if="viewMode === 'admin'">
           <button v-if="isAdmin && !isEditing" class="action-btn edit-btn" @click="startEditing">编辑</button>
           <button v-if="isAdmin && !isEditing" class="action-btn delete-btn" @click="handleDelete">删除</button>
-          <button v-if="isEditing" class="action-btn save-btn" @click="handleSave">保存</button>
+          <button v-if="isEditing" class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
+            <span v-if="isSaving">保存中...</span>
+            <span v-else>保存</span>
+          </button>
           <button v-if="isEditing && !isCreatingNew" class="action-btn cancel-btn" @click="cancelEditing">取消</button>
         </template>
         <template v-else-if="viewMode === 'student'">
@@ -34,19 +37,19 @@
           <div class="info-item">
             <label>姓名</label>
             <span v-if="!isEditing || viewMode === 'student'">{{ student.name }}</span>
-            <input v-else v-model="editableStudent.name" class="editable-input"/>
+            <input v-else v-model="editableStudent.name" class="editable-input" :class="{ 'input-error': validationErrors.name }"/>
           </div>
           <div class="info-item">
             <label>性别</label>
             <span v-if="!isEditing || viewMode === 'student'">{{ student.gender }}</span>
-            <select v-else v-model="editableStudent.gender" class="editable-input">
+            <select v-else v-model="editableStudent.gender" class="editable-input" :class="{ 'input-error': validationErrors.gender }">
               <option>男</option><option>女</option><option>其他</option>
             </select>
           </div>
           <div class="info-item">
             <label>出生日期</label>
             <span v-if="!isEditing || viewMode === 'student'">{{ student.dateOfBirth }}</span>
-            <input v-else type="date" v-model="editableStudent.dateOfBirth" class="editable-input" />
+            <input v-else type="date" v-model="editableStudent.dateOfBirth" class="editable-input" :class="{ 'input-error': validationErrors.dateOfBirth }"/>
           </div>
           <div class="info-item">
             <label>民族</label>
@@ -74,12 +77,12 @@
           <div class="info-item">
             <label>手机号码</label>
             <span v-if="!isEditing">{{ student.phoneNumber }}</span>
-            <input v-else v-model="editableStudent.phoneNumber" class="editable-input" />
+            <input v-else v-model="editableStudent.phoneNumber" class="editable-input" :class="{ 'input-error': validationErrors.phoneNumber }"/>
           </div>
           <div class="info-item">
             <label>电子邮箱</label>
             <span v-if="!isEditing">{{ student.email }}</span>
-            <input v-else type="email" v-model="editableStudent.email" class="editable-input" />
+            <input v-else type="email" v-model="editableStudent.email" class="editable-input" :class="{ 'input-error': validationErrors.email }"/>
           </div>
         </div>
       </div>
@@ -90,12 +93,12 @@
           <div class="info-item">
             <label for="studentId">学号</label>
             <span v-if="!isEditing">{{ student.studentId }}</span>
-            <input v-else v-model="editableStudent.studentId" id="studentId" class="editable-input" :disabled="!isCreatingNew"/>
+            <input v-else v-model="editableStudent.studentId" id="studentId" class="editable-input" :disabled="!isCreatingNew" :class="{ 'input-error': validationErrors.studentId }"/>
           </div>
           <div class="info-item">
             <label>入学日期</label>
             <span v-if="!isEditing || viewMode === 'student'">{{ student.enrollmentDate }}</span>
-            <input v-else type="date" v-model="editableStudent.enrollmentDate" class="editable-input" />
+            <input v-else type="date" v-model="editableStudent.enrollmentDate" class="editable-input" :class="{ 'input-error': validationErrors.enrollmentDate }"/>
           </div>
           <div class="info-item">
             <label>学院</label>
@@ -110,7 +113,7 @@
           <div class="info-item">
             <label>班级</label>
             <span v-if="!isEditing || viewMode === 'student'">{{ student.className }}</span>
-            <input v-else v-model="editableStudent.className" class="editable-input" />
+            <input v-else v-model="editableStudent.className" class="editable-input" :class="{ 'input-error': validationErrors.className }"/>
           </div>
           <div class="info-item">
             <label>学籍状态</label>
@@ -132,7 +135,11 @@
         <div class="form-grid">
           <div class="info-item">
             <label for="password">重置密码</label>
-            <input type="password" v-model="editableStudent.password" id="password" class="editable-input" placeholder="不修改请留空"/>
+            <input type="password" v-model="editableStudent.password" id="password" class="editable-input" placeholder="不修改请留空" :class="{ 'input-error': validationErrors.password }"/>
+          </div>
+          <div class="info-item" v-if="isCreatingNew">
+            <label>初始密码</label>
+            <input type="password" v-model="editableStudent.password" id="initial-password" class="editable-input" placeholder="请输入初始密码" required :class="{ 'input-error': validationErrors.password }"/>
           </div>
         </div>
       </div>
@@ -144,12 +151,11 @@
 import { ref, computed, watch } from 'vue';
 import { showNotification } from '@/services/notificationStore.js';
 
-// 1. 【重要】接收新的props，并为它们提供默认值
 const props = defineProps({
   student: { type: Object, required: true },
   isAdmin: { type: Boolean, default: true },
   viewMode: { type: String, default: 'admin' }, // 'admin' 或 'student'
-  isSaving: { type: Boolean, default: false }
+  isSaving: { type: Boolean, default: false } // 用于表示保存状态
 });
 
 const emit = defineEmits(['create-student', 'update-student', 'delete-student']);
@@ -172,29 +178,78 @@ watch(() => props.student, (newStudent) => {
 
 // 表单验证逻辑
 const validateForm = () => {
-  // 在学生模式下，我们只验证可编辑的字段，或者干脆跳过一些验证
-  if (props.viewMode === 'student') {
-    return true; // 简化处理，学生端可编辑字段较少，暂不添加复杂验证
-  }
-  // 管理员模式下的验证保持不变
-  const errors = {};
+  validationErrors.value = {}; // 清空之前的错误
   const form = editableStudent.value;
-  if (!form.name || form.name.trim().length < 2) errors.name = '姓名长度至少为两个字符。';
-  if (isCreatingNew.value && (!form.studentId || form.studentId.trim().length < 4)) errors.studentId = '学号不能为空且长度至少为4。';
-  if (!form.className || form.className.trim() === '') errors.className = '班级名称不能为空。';
-  if (!form.dateOfBirth) errors.dateOfBirth = '出生日期不能为空。';
-  validationErrors.value = errors;
-  if (Object.keys(errors).length > 0) {
-    const firstError = Object.values(errors)[0];
-    showNotification(firstError, 'error');
-    return false;
+
+  let isValid = true;
+
+  // 所有模式都应该验证的字段
+  if (!form.name || form.name.trim().length < 2 || form.name.trim().length > 50) {
+    validationErrors.value.name = '姓名不能为空且长度在2到50之间。';
+    isValid = false;
   }
-  return true;
+  if (!form.gender || form.gender.trim() === '') {
+    validationErrors.value.gender = '性别不能为空。';
+    isValid = false;
+  }
+  if (!form.dateOfBirth) {
+    validationErrors.value.dateOfBirth = '出生日期不能为空。';
+    isValid = false;
+  } else {
+    const dob = new Date(form.dateOfBirth);
+    if (isNaN(dob) || dob > new Date()) {
+      validationErrors.value.dateOfBirth = '出生日期必须是过去的时间。';
+      isValid = false;
+    }
+  }
+  if (form.phoneNumber && !/^1[3-9]\d{9}$/.test(form.phoneNumber)) {
+    validationErrors.value.phoneNumber = '请输入有效的手机号码。';
+    isValid = false;
+  }
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    validationErrors.value.email = '请输入有效的电子邮箱。';
+    isValid = false;
+  }
+
+  // 管理员模式或新增学生时特有的验证
+  if (props.viewMode === 'admin' || isCreatingNew.value) {
+    if (!form.studentId || form.studentId.trim().length < 4 || form.studentId.trim().length > 20) {
+      validationErrors.value.studentId = '学号不能为空且长度在4到20之间。';
+      isValid = false;
+    }
+    if (!form.className || form.className.trim().length === 0 || form.className.trim().length > 100) {
+      validationErrors.value.className = '班级名称不能为空且长度不能超过100。';
+      isValid = false;
+    }
+    if (isCreatingNew.value && (!form.password || form.password.trim() === '')) {
+      validationErrors.value.password = '初始密码不能为空。';
+      isValid = false;
+    }
+    if (form.enrollmentDate && new Date(form.enrollmentDate) > new Date()) {
+      validationErrors.value.enrollmentDate = '入学日期不能是未来的时间。';
+      isValid = false;
+    }
+  }
+
+  // 如果是学生模式，且是修改密码，则密码不能为空
+  if (props.viewMode === 'student' && isEditing.value && form.password && form.password.trim() === '') {
+    validationErrors.value.password = '密码不能为空。';
+    isValid = false;
+  }
+
+
+  if (!isValid) {
+    // 显示第一个错误通知
+    const firstError = Object.values(validationErrors.value)[0];
+    showNotification(firstError, 'error');
+  }
+  return isValid;
 };
 
 // 进入编辑模式
 const startEditing = () => {
   isEditing.value = true;
+  validationErrors.value = {}; // 清空错误信息
 };
 
 // 取消编辑，恢复原始数据
@@ -204,7 +259,7 @@ const cancelEditing = () => {
   isEditing.value = false;
 };
 
-// 2. 【重要】保存逻辑，根据模式决定做什么
+// 保存逻辑，根据模式决定做什么
 const handleSave = () => {
   if (validateForm()) {
     // 父组件会监听 'create-student' 或 'update-student' 事件
@@ -212,10 +267,24 @@ const handleSave = () => {
     if (isCreatingNew.value) {
       emit('create-student', editableStudent.value);
     } else {
-      emit('update-student', editableStudent.value);
+      // 学生模式下，只允许更新特定字段
+      if (props.viewMode === 'student') {
+        const profileData = {
+          password: editableStudent.value.password,
+          phoneNumber: editableStudent.value.phoneNumber,
+          email: editableStudent.value.email
+        };
+        emit('update-student', { id: editableStudent.value.id, ...profileData });
+      } else {
+        // 管理员模式下，更新所有可编辑字段
+        emit('update-student', editableStudent.value);
+      }
     }
     // 无论哪种模式，保存后都退出编辑状态
-    isEditing.value = false;
+    // 注意：这里的isEditing=false应该由父组件在API调用成功后设置，
+    // 以确保数据真正保存成功才退出编辑状态。
+    // 但是为了UI的即时反馈，这里先设置，如果API失败，父组件会重新加载数据
+    // 或者取消editing状态。这里保持原逻辑，父组件负责重置。
   }
 };
 
@@ -283,8 +352,8 @@ const handleDelete = () => {
 }
 .info-card {
   background-color: var(--color-surface);
-  border-radius: var(--border-radius);
   padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
 .info-card h4 {
@@ -339,6 +408,10 @@ const handleDelete = () => {
   background-color: #f8f9fa;
   cursor: not-allowed;
   color: var(--color-text-secondary);
+}
+.input-error {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
 }
 select.editable-input {
   /* 【关键修改】增加浏览器前缀，提升兼容性 */

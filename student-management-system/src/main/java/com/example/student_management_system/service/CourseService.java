@@ -1,4 +1,3 @@
-// 文件路径: student-management-system/src/main/java/com/example/student_management_system/service/CourseService.java
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.CourseDTO;
@@ -14,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function; // 【修复】导入 Function 包
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,7 +73,7 @@ public class CourseService {
     @Transactional(readOnly = true)
     public List<CourseResponseDTO> findCoursesByTeacherId(Long teacherId) {
         List<Course> courses = courseMapper.findByTeacherId(teacherId);
-        Teacher teacher = teacherMapper.findById(teacherId);
+        Teacher teacher = teacherMapper.findById(teacherId); // 修正：应通过ID获取教师
 
         return courses.stream().map(course -> {
             CourseResponseDTO dto = new CourseResponseDTO();

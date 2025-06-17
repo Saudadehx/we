@@ -1,7 +1,7 @@
 <template>
   <Transition name="fade">
     <div v-if="notification.visible" class="notification-container" :class="notification.type">
-      {{ notification.message }}
+      <span class="notification-icon" v-if="notification.type === 'success'">&#10003;</span> <span class="notification-icon" v-else-if="notification.type === 'error'">&#10007;</span> <span class="notification-text">{{ notification.message }}</span>
     </div>
   </Transition>
 </template>
@@ -22,14 +22,22 @@ import { notification } from '@/services/notificationStore.js';
   font-size: 1.1em;
   z-index: 9999;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 图标与文字间距 */
 }
 .success { background-color: #198754; }
 .error { background-color: #dc3545; }
 
+.notification-icon {
+  font-size: 1.4em; /* 增大图标 */
+  line-height: 1;
+}
+
 /* Vue Transition 的淡入淡出效果 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
