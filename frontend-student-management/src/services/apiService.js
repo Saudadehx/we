@@ -63,6 +63,14 @@ export const teacherService = {
     getMyCourses: () => apiClient.get('/teachers/me/courses'),
 };
 
+
+export const majorService = {
+    getAll: () => apiClient.get('/majors'),
+    create: (majorData) => apiClient.post('/majors', majorData),
+    update: (id, majorData) => apiClient.put(`/majors/${id}`, majorData),
+    delete: (id) => apiClient.delete(`/majors/${id}`),
+};
+
 export const courseService = {
     getAll: (params = {}) => apiClient.get('/courses', { params }),
     create: (courseData) => apiClient.post('/courses', courseData),
@@ -74,8 +82,10 @@ export const enrollmentService = {
     getForCourse: (courseId) => apiClient.get(`/teachers/me/courses/${courseId}/enrollments`),
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
     enrollInCourse: (courseId) => apiClient.post('/students/me/enrollments', { courseId }),
-    // 【修改】学生退课接口现在接收 enrollmentId
     dropCourse: (enrollmentId) => apiClient.delete(`/students/me/enrollments/${enrollmentId}`),
+    assignCompulsoryCourses: (majorId, academicYear, semester) => apiClient.post('/enrollments/assign-compulsory', { majorId, academicYear, semester }),
+    // 【新增】调用学生可选课程列表的接口
+    getAvailableCourses: () => apiClient.get('/students/me/available-courses'),
 };
 
 export const studentService = {

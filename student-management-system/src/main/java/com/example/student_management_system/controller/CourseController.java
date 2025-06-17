@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap; // 【新增】导入 HashMap
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,17 +21,15 @@ public class CourseController {
     private CourseService courseService;
 
     /**
-     * 【修复】获取所有课程的列表，支持搜索
-     * 将接收整个Map的方式，改为分别接收具体的、并且非必需的参数，以增强接口的健壮性。
-     * 这样即使前端不传递任何参数，此接口也能正常响应。
+     * 【修改】恢复为通用的课程列表接口，主要供管理员使用
      */
     @GetMapping
+    @PreAuthorize("isAuthenticated()") // 任何认证用户都可访问
     public ApiResult<List<CourseResponseDTO>> getAllCourses(
             @RequestParam(required = false) String courseName,
             @RequestParam(required = false) String courseId,
             @RequestParam(required = false) String teacherName
     ) {
-        // 手动将接收到的参数放入Map中，再传递给Service层
         Map<String, Object> params = new HashMap<>();
         params.put("courseName", courseName);
         params.put("courseId", courseId);

@@ -12,4 +12,10 @@ public class CourseResponseDTO {
     private String teacherId;   // 【新增】返回教师工号，用于编辑时回显
     private Integer courseDay;
     private Integer courseTime;
+
+    private String courseType;
+    private Long majorId;
+    private Integer academicYear;
+    private Integer semester;
+    private String majorName; // 新增，用于显示专业名称
 }

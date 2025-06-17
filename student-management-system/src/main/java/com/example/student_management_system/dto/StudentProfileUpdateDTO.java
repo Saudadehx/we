@@ -4,8 +4,15 @@ import lombok.Data;
 
 @Data
 public class StudentProfileUpdateDTO {
-    // 学生只能修改自己的密码、电话和邮箱
+    // 账户信息
     private String password;
+
+    // 联系方式
     private String phoneNumber;
     private String email;
+
+    // 【新增】允许学生修改的个人信息
+    private String ethnicity;
+    private String nativePlace;
+    private String politicalStatus;
 }

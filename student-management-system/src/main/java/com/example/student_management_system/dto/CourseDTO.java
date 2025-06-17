@@ -11,4 +11,9 @@ public class CourseDTO {
 
     private Integer courseDay;
     private Integer courseTime;
+
+    private String courseType;
+    private Long majorId;
+    private Integer academicYear;
+    private Integer semester;
 }

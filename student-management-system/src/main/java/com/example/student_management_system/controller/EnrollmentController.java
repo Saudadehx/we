@@ -107,17 +107,43 @@ public class EnrollmentController {
         return ApiResult.success();
     }
 
-    // --- 供管理员使用的接口 ---
-
     /**
-     * 管理员为学生选课
-     * @param enrollmentDTO 包含学生学号和课程编号
-     * @return 创建的选课记录
+     * 【新增】学生获取自己可选的课程列表
      */
+    @GetMapping("/students/me/available-courses")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ApiResult<List<CourseResponseDTO>> getStudentAvailableCourses(@AuthenticationPrincipal Student student) {
+        return ApiResult.success(enrollmentService.getAvailableCoursesForStudent(student.getId()));
+    }
+
+    // --- 供管理员使用的接口 ---
     @PostMapping("/enrollments")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResult<Enrollment> createEnrollment(@RequestBody EnrollmentDTO enrollmentDTO) {
         // 业务逻辑异常已在Service层处理，Controller层直接调用即可
         return ApiResult.success(enrollmentService.createEnrollment(enrollmentDTO));
+
+
+    }
+    /**
+     * 新增：管理员为专业预置课程的接口
+     */
+    @PostMapping("/enrollments/assign-compulsory")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResult<Map<String, String>> assignCourses(@RequestBody Map<String, Object> payload) {
+        try {
+            Long majorId = Long.parseLong(payload.get("majorId").toString());
+            Integer academicYear = Integer.parseInt(payload.get("academicYear").toString());
+            Integer semester = Integer.parseInt(payload.get("semester").toString());
+
+            int count = enrollmentService.assignCompulsoryCourses(majorId, academicYear, semester);
+            String message = "成功为 " + count + " 名学生分配了必修课。";
+            return ApiResult.success(Map.of("message", message));
+
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("majorId, academicYear, semester 必须是有效的数字。");
+        } catch (Exception e) {
+            throw e; // 其他异常由全局处理器处理
+        }
     }
 }

@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import lombok.Data;
 
-@Data // 【关键】确保这个注解存在，它会自动生成所有字段的get/set方法
+@Data
 public class StudentCreateDTO {
 
     // --- 账户信息 ---
@@ -44,11 +44,14 @@ public class StudentCreateDTO {
     @Size(max = 100, message = "班级名称长度不能超过100")
     private String className;
 
-    @Size(max = 100, message = "专业列表长度不能超过100")
-    private String major;
-
     private LocalDate enrollmentDate;
     private String studentStatus;
     private Double gpa;
     private String photoUrl;
+
+    private Long majorId;
+    private Integer academicYear;
+
+    // 【新增】
+    private Integer semester;
 }

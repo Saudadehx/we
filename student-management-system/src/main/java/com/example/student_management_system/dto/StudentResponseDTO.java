@@ -15,13 +15,18 @@ public class StudentResponseDTO {
     private String studentId;
     private String college;
     private String className;
-    private String major;
     private LocalDate enrollmentDate;
     private String studentStatus;
     private Double gpa;
     private String photoUrl;
+    private Long majorId;
+    private Integer academicYear;
+    private String majorName;
 
-    // 【关键】为所有字段添加Getters和Setters
+    // 【新增】
+    private Integer semester;
+
+    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
@@ -46,8 +51,6 @@ public class StudentResponseDTO {
     public void setCollege(String college) { this.college = college; }
     public String getClassName() { return className; }
     public void setClassName(String className) { this.className = className; }
-    public String getMajor() { return major; }
-    public void setMajor(String major) { this.major = major; }
     public LocalDate getEnrollmentDate() { return enrollmentDate; }
     public void setEnrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; }
     public String getStudentStatus() { return studentStatus; }
@@ -56,4 +59,14 @@ public class StudentResponseDTO {
     public void setGpa(Double gpa) { this.gpa = gpa; }
     public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    public Long getMajorId() { return majorId; }
+    public void setMajorId(Long majorId) { this.majorId = majorId; }
+    public Integer getAcademicYear() { return academicYear; }
+    public void setAcademicYear(Integer academicYear) { this.academicYear = academicYear; }
+    public String getMajorName() { return majorName; }
+    public void setMajorName(String majorName) { this.majorName = majorName; }
+
+    // 【新增】
+    public Integer getSemester() { return semester; }
+    public void setSemester(Integer semester) { this.semester = semester; }
 }

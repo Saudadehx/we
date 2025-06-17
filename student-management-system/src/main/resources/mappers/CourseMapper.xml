@@ -10,18 +10,27 @@
         <result property="teacherId" column="teacher_id"/>
         <result property="courseDay" column="course_day"/>
         <result property="courseTime" column="course_time"/>
+        <result property="courseType" column="course_type"/>
+        <result property="majorId" column="major_id"/>
+        <result property="academicYear" column="academic_year"/>
+        <result property="semester" column="semester"/>
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id, course_id, course_name, credits, teacher_id, course_day, course_time,
+        course_type, major_id, academic_year, semester
+    </sql>
+
     <select id="findById" parameterType="long" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE id = #{id}
+        SELECT <include refid="Base_Column_List" /> FROM courses WHERE id = #{id}
     </select>
 
     <select id="findByCourseId" parameterType="string" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE course_id = #{courseId}
+        SELECT <include refid="Base_Column_List" /> FROM courses WHERE course_id = #{courseId}
     </select>
 
     <select id="findByIds" parameterType="java.util.List" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses
+        SELECT <include refid="Base_Column_List" /> FROM courses
         WHERE id IN
         <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
             #{item}
@@ -29,7 +38,8 @@
     </select>
 
     <select id="findAll" parameterType="map" resultMap="CourseResultMap">
-        SELECT c.id, c.course_id, c.course_name, c.credits, c.teacher_id, c.course_day, c.course_time, t.name as teacher_name
+        SELECT c.id, c.course_id, c.course_name, c.credits, c.teacher_id, c.course_day, c.course_time,
+        c.course_type, c.major_id, c.academic_year, c.semester, t.name as teacher_name
         FROM courses c
         LEFT JOIN teachers t ON c.teacher_id = t.id
         <where>
@@ -42,27 +52,45 @@
             <if test="courseId != null and courseId != ''">
                 AND c.course_id LIKE CONCAT('%', #{courseId}, '%')
             </if>
+            <if test="majorId != null">
+                AND c.major_id = #{majorId}
+            </if>
+            <if test="academicYear != null">
+                AND c.academic_year = #{academicYear}
+            </if>
+            <if test="semester != null">
+                AND c.semester = #{semester}
+            </if>
+            <if test="courseType != null and courseType != ''">
+                AND c.course_type = #{courseType}
+            </if>
         </where>
         ORDER BY c.course_id
     </select>
 
     <select id="findByTeacherId" parameterType="long" resultMap="CourseResultMap">
-        SELECT id, course_id, course_name, credits, teacher_id, course_day, course_time FROM courses WHERE teacher_id = #{teacherId}
+        SELECT <include refid="Base_Column_List" /> FROM courses WHERE teacher_id = #{teacherId}
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.Course">
-        INSERT INTO courses(course_id, course_name, credits, teacher_id, course_day, course_time)
-        VALUES(#{courseId}, #{courseName}, #{credits}, #{teacherId}, #{courseDay}, #{courseTime})
+        INSERT INTO courses(course_id, course_name, credits, teacher_id, course_day, course_time,
+                            course_type, major_id, academic_year, semester)
+        VALUES(#{courseId}, #{courseName}, #{credits}, #{teacherId}, #{courseDay}, #{courseTime},
+               #{courseType}, #{majorId}, #{academicYear}, #{semester})
     </insert>
 
     <update id="update" parameterType="com.example.student_management_system.model.Course">
         UPDATE courses
         SET course_id = #{courseId},
-        course_name = #{courseName},
-        credits = #{credits},
-        teacher_id = #{teacherId},
-        course_day = #{courseDay},
-        course_time = #{courseTime}
+            course_name = #{courseName},
+            credits = #{credits},
+            teacher_id = #{teacherId},
+            course_day = #{courseDay},
+            course_time = #{courseTime},
+            course_type = #{courseType},
+            major_id = #{majorId},
+            academic_year = #{academicYear},
+            semester = #{semester}
         WHERE id = #{id}
     </update>
 

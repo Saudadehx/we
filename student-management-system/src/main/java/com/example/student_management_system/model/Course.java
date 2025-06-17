@@ -13,5 +13,10 @@ public class Course {
     private Integer courseDay;
     // 【新增】上课时间段 (例如 1-5 代表 1-5大节)
     private Integer courseTime;
+    // --- 新增字段 ---
+    private String courseType; // "COMPULSORY" (必修) 或 "ELECTIVE" (选修)
+    private Long majorId;      // 关联的专业ID，选修课此项可为null
+    private Integer academicYear; // 课程所属学年，如 1, 2, 3, 4
+    private Integer semester;     // 课程所属学期，如 1 (上学期), 2 (下学期)
 
 }

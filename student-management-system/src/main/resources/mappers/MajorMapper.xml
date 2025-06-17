@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.MajorMapper">
+
+    <resultMap id="MajorResultMap" type="com.example.student_management_system.model.Major">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="MajorResultMap">
+        SELECT * FROM majors ORDER BY id
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="MajorResultMap">
+        SELECT * FROM majors WHERE id = #{id}
+    </select>
+
+    <select id="findByName" parameterType="string" resultMap="MajorResultMap">
+        SELECT * FROM majors WHERE name = #{name}
+    </select>
+
+    <insert id="insert" parameterType="com.example.student_management_system.model.Major" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO majors(name, description)
+        VALUES(#{name}, #{description})
+    </insert>
+
+    <update id="update" parameterType="com.example.student_management_system.model.Major">
+        UPDATE majors
+        SET name = #{name},
+            description = #{description}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM majors WHERE id = #{id}
+    </delete>
+
+</mapper>

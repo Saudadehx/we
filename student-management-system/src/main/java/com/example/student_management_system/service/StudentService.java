@@ -1,7 +1,9 @@
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.*;
+import com.example.student_management_system.mapper.MajorMapper;
 import com.example.student_management_system.mapper.StudentMapper;
+import com.example.student_management_system.model.Major;
 import com.example.student_management_system.model.Student;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -9,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -18,15 +22,22 @@ public class StudentService {
 
     private final StudentMapper studentMapper;
     private final PasswordEncoder passwordEncoder;
+    private final MajorMapper majorMapper;
 
     @Autowired
-    public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder) {
+    public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder, MajorMapper majorMapper) {
         this.studentMapper = studentMapper;
         this.passwordEncoder = passwordEncoder;
+        this.majorMapper = majorMapper;
     }
 
     private StudentResponseDTO convertToResponseDto(Student student) {
         if (student == null) return null;
+        Major major = null;
+        if (student.getMajorId() != null) {
+            major = majorMapper.findById(student.getMajorId());
+        }
+
         StudentResponseDTO dto = new StudentResponseDTO();
         dto.setId(student.getId());
         dto.setName(student.getName());
@@ -40,24 +51,30 @@ public class StudentService {
         dto.setStudentId(student.getStudentId());
         dto.setCollege(student.getCollege());
         dto.setClassName(student.getClassName());
-        dto.setMajor(student.getMajor());
         dto.setEnrollmentDate(student.getEnrollmentDate());
         dto.setStudentStatus(student.getStudentStatus());
         dto.setGpa(student.getGpa());
         dto.setPhotoUrl(student.getPhotoUrl());
+        dto.setMajorId(student.getMajorId());
+        dto.setAcademicYear(student.getAcademicYear());
+        dto.setSemester(student.getSemester());
+        dto.setMajorName(major != null ? major.getName() : "未分配");
+
         return dto;
     }
 
     public DashboardStatsDTO getDashboardStats() {
-        // ... 此方法不需要修改
-        List<Student> students = studentMapper.findAll();
+        // 【修改】直接从 majorMapper 获取所有专业来进行统计
+        List<Student> students = studentMapper.findAll(Collections.emptyMap());
+        List<Major> majors = majorMapper.findAll();
+
         long totalStudents = students.size();
         long totalClasses = students.stream().map(Student::getClassName).distinct().count();
-        long totalMajors = students.stream().map(Student::getMajor).filter(m -> m != null && !m.isEmpty()).distinct().count();
+        long totalMajors = majors.size(); // 直接获取专业总数
         long totalGrades = students.stream()
                 .map(s -> s.getClassName().replaceAll("[^0-9]", ""))
                 .filter(s -> !s.isEmpty())
-                .map(s -> s.substring(0, 2))
+                .map(s -> s.substring(0, Math.min(s.length(), 4)))
                 .distinct()
                 .count();
 
@@ -72,7 +89,7 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public List<StudentResponseDTO> getAllStudents() {
-        return studentMapper.findAll().stream()
+        return studentMapper.findAll(Collections.emptyMap()).stream()
                 .map(this::convertToResponseDto)
                 .collect(Collectors.toList());
     }
@@ -94,12 +111,10 @@ public class StudentService {
 
         Student student = new Student();
 
-        // 【关键】确保 password 字段从 DTO 正确映射并加密
         if (StringUtils.hasText(studentDto.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
         }
 
-        // 确保所有其他字段都从 DTO 正确映射
         student.setName(studentDto.getName());
         student.setGender(studentDto.getGender());
         student.setDateOfBirth(studentDto.getDateOfBirth());
@@ -111,15 +126,15 @@ public class StudentService {
         student.setStudentId(studentDto.getStudentId());
         student.setCollege(studentDto.getCollege());
         student.setClassName(studentDto.getClassName());
-        student.setMajor(studentDto.getMajor());
         student.setEnrollmentDate(studentDto.getEnrollmentDate());
         student.setStudentStatus(studentDto.getStudentStatus());
         student.setGpa(studentDto.getGpa());
         student.setPhotoUrl(studentDto.getPhotoUrl());
+        student.setMajorId(studentDto.getMajorId());
+        student.setAcademicYear(studentDto.getAcademicYear());
+        student.setSemester(studentDto.getSemester());
 
         studentMapper.insert(student);
-
-        // 返回新创建的学生信息
         Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
         return convertToResponseDto(createdStudent);
     }
@@ -141,31 +156,28 @@ public class StudentService {
         if (StringUtils.hasText(studentDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
         }
-        // 基本信息
+
         student.setName(studentDetails.getName());
         student.setGender(studentDetails.getGender());
         student.setDateOfBirth(studentDetails.getDateOfBirth());
         student.setEthnicity(studentDetails.getEthnicity());
         student.setNativePlace(studentDetails.getNativePlace());
         student.setPoliticalStatus(studentDetails.getPoliticalStatus());
-
-        // 联系方式
         student.setPhoneNumber(studentDetails.getPhoneNumber());
         student.setEmail(studentDetails.getEmail());
-
-        // 学籍信息
         student.setStudentId(studentDetails.getStudentId());
         student.setCollege(studentDetails.getCollege());
         student.setClassName(studentDetails.getClassName());
-        student.setMajor(studentDetails.getMajor());
         student.setEnrollmentDate(studentDetails.getEnrollmentDate());
         student.setStudentStatus(studentDetails.getStudentStatus());
         student.setGpa(studentDetails.getGpa());
         student.setPhotoUrl(studentDetails.getPhotoUrl());
+        student.setMajorId(studentDetails.getMajorId());
+        student.setAcademicYear(studentDetails.getAcademicYear());
+        student.setSemester(studentDetails.getSemester());
 
         int affectedRows = studentMapper.update(student);
         if (affectedRows == 0) {
-            // 如果影响行数为0，说明更新没有成功，可能是数据版本问题或ID不存在
             throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
         }
         return convertToResponseDto(student);
@@ -188,14 +200,16 @@ public class StudentService {
             throw new ResourceNotFoundException("未找到ID为 " + studentId + " 的学生。");
         }
 
-        // 学生只能更新部分信息
         if (StringUtils.hasText(profileDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(profileDetails.getPassword()));
         }
         student.setPhoneNumber(profileDetails.getPhoneNumber());
         student.setEmail(profileDetails.getEmail());
 
-        // 【关键修改】同样检查update操作影响的行数
+        student.setEthnicity(profileDetails.getEthnicity());
+        student.setNativePlace(profileDetails.getNativePlace());
+        student.setPoliticalStatus(profileDetails.getPoliticalStatus());
+
         int affectedRows = studentMapper.update(student);
         if (affectedRows == 0) {
             throw new RuntimeException("更新个人信息失败，请刷新后重试。");

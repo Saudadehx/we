@@ -14,7 +14,8 @@ const routes = [
   { path: '/dashboard/teachers', name: 'AdminTeacherMgmt', component: () => import('@/views/admin/TeacherManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   // 【新增】管理员设置路由
   { path: '/dashboard/settings', name: 'AdminSettings', component: () => import('@/views/admin/AdminSettings.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
-
+  { path: '/dashboard/majors', name: 'AdminMajorMgmt', component: () => import('@/views/admin/MajorManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/dashboard/settings', name: 'AdminSettings', component: () => import('@/views/admin/AdminSettings.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   // --- 教师路由 ---
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('@/views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/course/:id/grades', name: 'GradeEntry', component: () => import('@/views/teacher/GradeEntry.vue'), props: true, meta: { requiresAuth: true, roles: ['TEACHER'] } },

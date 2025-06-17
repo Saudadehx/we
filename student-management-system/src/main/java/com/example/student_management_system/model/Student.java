@@ -11,16 +11,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
-/**
- * 学生实体类 - 最终手动实现版
- * 移除了Lombok @Data, 手动实现所有get/set以及equals/hashCode/toString
- * 以解决潜在的运行时冲突问题
- */
 public class Student implements UserDetails {
 
     private Long id;
@@ -45,12 +38,14 @@ public class Student implements UserDetails {
     @NotBlank(message = "班级名称不能为空")
     @Size(max = 100, message = "班级名称长度不能超过100")
     private String className;
-    @Size(max = 100, message = "专业列表长度不能超过100")
-    private String major;
+    // private String major; // 【删除】移除此行
     private LocalDate enrollmentDate;
     private String studentStatus;
     private Double gpa;
     private String photoUrl;
+    private Long majorId;
+    private Integer academicYear;
+    private Integer semester;
 
     // --- 构造函数 ---
     public Student() {
@@ -89,8 +84,8 @@ public class Student implements UserDetails {
     public void setCollege(String college) { this.college = college; }
     public String getClassName() { return className; }
     public void setClassName(String className) { this.className = className; }
-    public String getMajor() { return major; }
-    public void setMajor(String major) { this.major = major; }
+    // public String getMajor() { return major; } // 【删除】移除此行
+    // public void setMajor(String major) { this.major = major; } // 【删除】移除此行
     public LocalDate getEnrollmentDate() { return enrollmentDate; }
     public void setEnrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; }
     public String getStudentStatus() { return studentStatus; }
@@ -99,6 +94,12 @@ public class Student implements UserDetails {
     public void setGpa(Double gpa) { this.gpa = gpa; }
     public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    public Long getMajorId() { return majorId; }
+    public void setMajorId(Long majorId) { this.majorId = majorId; }
+    public Integer getAcademicYear() { return academicYear; }
+    public void setAcademicYear(Integer academicYear) { this.academicYear = academicYear; }
+    public Integer getSemester() { return semester; }
+    public void setSemester(Integer semester) { this.semester = semester; }
 
     // --- UserDetails 接口实现 ---
     @Override
@@ -108,18 +109,11 @@ public class Student implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return this.password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    public String getPassword() { return this.password; }
+    public void setPassword(String password) { this.password = password; }
 
     @Override
-    public String getUsername() {
-        return this.studentId;
-    }
+    public String getUsername() { return this.studentId; }
 
     @Override
     public boolean isAccountNonExpired() { return true; }
@@ -130,7 +124,7 @@ public class Student implements UserDetails {
     @Override
     public boolean isEnabled() { return true; }
 
-    // --- 手动实现的 equals, hashCode, toString ---
+    // --- equals, hashCode, toString ---
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
