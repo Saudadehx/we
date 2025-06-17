@@ -2,15 +2,15 @@ package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.TeacherDTO;
 import com.example.student_management_system.dto.TeacherDetailDTO;
-import com.example.student_management_system.mapper.CourseMapper;
+import com.example.student_management_system.mapper.CourseOfferingMapper; // 修正依赖
 import com.example.student_management_system.mapper.TeacherMapper;
-import com.example.student_management_system.model.Course;
+import com.example.student_management_system.model.CourseOffering;
 import com.example.student_management_system.model.Teacher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // 导入
-import org.springframework.util.StringUtils; // 导入
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -20,14 +20,16 @@ import java.util.stream.Collectors;
 @Service
 public class TeacherService {
 
-    @Autowired
-    private TeacherMapper teacherMapper;
+    private final TeacherMapper teacherMapper;
+    private final CourseOfferingMapper courseOfferingMapper; // 修正依赖
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    private CourseMapper courseMapper; // 注入CourseMapper
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public TeacherService(TeacherMapper teacherMapper, CourseOfferingMapper courseOfferingMapper, PasswordEncoder passwordEncoder) {
+        this.teacherMapper = teacherMapper;
+        this.courseOfferingMapper = courseOfferingMapper; // 修正依赖
+        this.passwordEncoder = passwordEncoder;
+    }
 
     /**
      * 管理员创建新教师账户
@@ -42,35 +44,32 @@ public class TeacherService {
         Teacher teacher = new Teacher();
         teacher.setTeacherId(teacherDTO.getTeacherId());
         teacher.setName(teacherDTO.getName());
-        // 核心业务：密码必须加密存储
         teacher.setPassword(passwordEncoder.encode(teacherDTO.getPassword()));
 
         teacherMapper.insert(teacher);
-
-        // 返回的数据不应包含密码
-        teacherDTO.setPassword(null);
+        teacherDTO.setPassword(null); // 返回的数据不应包含密码
         return teacherDTO;
     }
 
     /**
-     * 【修改】获取所有教师列表，并附带他们所教授的课程信息
-     * @return 包含课程信息的教师列表
+     * 获取所有教师列表，并附带他们所教授的课程安排信息
+     * @return 包含课程安排信息的教师列表
      */
-    public List<TeacherDetailDTO> getAllTeachersWithCourses() {
+    public List<TeacherDetailDTO> getAllTeachersWithOfferings() {
         List<Teacher> teachers = teacherMapper.findAll();
         if (teachers.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 一次性获取所有课程，避免N+1查询
-        List<Course> allCourses = courseMapper.findAll(Collections.emptyMap());
+        // 一次性获取所有课程安排，避免N+1查询
+        List<CourseOffering> allOfferings = courseOfferingMapper.findAllWithDetails();
 
-        // 按教师ID将课程分组
-        Map<Long, List<String>> coursesByTeacherId = allCourses.stream()
-                .filter(course -> course.getTeacherId() != null)
+        // 按教师ID将课程安排分组
+        Map<Long, List<String>> offeringsByTeacherId = allOfferings.stream()
+                .filter(offering -> offering.getTeacherId() != null)
                 .collect(Collectors.groupingBy(
-                        Course::getTeacherId,
-                        Collectors.mapping(Course::getCourseName, Collectors.toList())
+                        CourseOffering::getTeacherId,
+                        Collectors.mapping(CourseOffering::getCourseName, Collectors.toList())
                 ));
 
         // 组装最终的DTO列表
@@ -79,13 +78,13 @@ public class TeacherService {
             dto.setId(teacher.getId());
             dto.setTeacherId(teacher.getTeacherId());
             dto.setName(teacher.getName());
-            dto.setTaughtCourses(coursesByTeacherId.getOrDefault(teacher.getId(), Collections.emptyList()));
+            dto.setTaughtCourses(offeringsByTeacherId.getOrDefault(teacher.getId(), Collections.emptyList()));
             return dto;
         }).collect(Collectors.toList());
     }
 
     /**
-     * 【新增】更新教师信息
+     * 更新教师信息
      * @param id 教师的数据库ID
      * @param teacherDTO 包含要更新信息的DTO
      * @return 更新后的教师信息
@@ -99,7 +98,6 @@ public class TeacherService {
         teacher.setName(teacherDTO.getName());
         teacher.setTeacherId(teacherDTO.getTeacherId());
 
-        // 如果传入了新密码，则更新密码
         if (StringUtils.hasText(teacherDTO.getPassword())) {
             teacher.setPassword(passwordEncoder.encode(teacherDTO.getPassword()));
         }
@@ -110,7 +108,7 @@ public class TeacherService {
     }
 
     /**
-     * 【新增】删除教师
+     * 删除教师，并解除其与所有课程安排的关联
      * @param id 教师的数据库ID
      */
     @Transactional
@@ -118,9 +116,10 @@ public class TeacherService {
         if (teacherMapper.findById(id) == null) {
             throw new ResourceNotFoundException("ID为 " + id + " 的教师不存在，无法删除。");
         }
-        // 在实际项目中，删除教师前可能还需要检查该教师是否关联了课程
-        // 【注意】这里需要先处理关联的课程，比如将其teacher_id设为null
-        courseMapper.disassociateTeacherFromCourses(id);
+        // 1. 解除该教师与所有课程安排的关联
+        courseOfferingMapper.disassociateTeacherFromOfferings(id);
+
+        // 2. 删除教师记录
         teacherMapper.deleteById(id);
     }
 }

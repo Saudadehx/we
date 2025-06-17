@@ -1,58 +1,54 @@
 package com.example.student_management_system.controller;
 
 import com.example.student_management_system.dto.ApiResult;
-import com.example.student_management_system.dto.CourseDTO;
-import com.example.student_management_system.dto.CourseResponseDTO;
-import com.example.student_management_system.model.Course;
+import com.example.student_management_system.model.CourseCatalog;
+import com.example.student_management_system.model.CourseOffering;
 import com.example.student_management_system.service.CourseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
-@RequestMapping("/api/courses")
+@RequestMapping("/api")
+@PreAuthorize("hasRole('ADMIN')")
 public class CourseController {
 
     @Autowired
     private CourseService courseService;
 
-    /**
-     * 【修改】恢复为通用的课程列表接口，主要供管理员使用
-     */
-    @GetMapping
-    @PreAuthorize("isAuthenticated()") // 任何认证用户都可访问
-    public ApiResult<List<CourseResponseDTO>> getAllCourses(
-            @RequestParam(required = false) String courseName,
-            @RequestParam(required = false) String courseId,
-            @RequestParam(required = false) String teacherName
-    ) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("courseName", courseName);
-        params.put("courseId", courseId);
-        params.put("teacherName", teacherName);
-        return ApiResult.success(courseService.getAllCoursesWithTeacherName(params));
+    // --- 课程目录接口 ---
+    @GetMapping("/course-catalogs")
+    public ApiResult<List<CourseCatalog>> getAllCatalogs() {
+        return ApiResult.success(courseService.getAllCatalogs());
     }
 
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResult<Course> createCourse(@RequestBody CourseDTO courseDTO) {
-        return ApiResult.success(courseService.createCourse(courseDTO));
+    @PostMapping("/course-catalogs")
+    public ApiResult<CourseCatalog> createCatalog(@RequestBody CourseCatalog catalog) {
+        return ApiResult.success(courseService.createCatalog(catalog));
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResult<Course> updateCourse(@PathVariable Long id, @RequestBody CourseDTO courseDTO) {
-        return ApiResult.success(courseService.updateCourse(id, courseDTO));
+    // --- 课程安排接口 ---
+    @GetMapping("/course-offerings")
+    public ApiResult<List<CourseOffering>> getAllOfferings() {
+        return ApiResult.success(courseService.getAllOfferings());
     }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResult<?> deleteCourse(@PathVariable Long id) {
-        courseService.deleteCourse(id);
+    @PostMapping("/course-offerings")
+    public ApiResult<CourseOffering> createOffering(@RequestBody CourseOffering offering) {
+        return ApiResult.success(courseService.createOffering(offering));
+    }
+
+    @PutMapping("/course-offerings/{id}")
+    public ApiResult<CourseOffering> updateOffering(@PathVariable Long id, @RequestBody CourseOffering offering) {
+        offering.setId(id);
+        return ApiResult.success(courseService.updateOffering(offering));
+    }
+
+    @DeleteMapping("/course-offerings/{id}")
+    public ApiResult<?> deleteOffering(@PathVariable Long id) {
+        courseService.deleteOffering(id);
         return ApiResult.success();
     }
 }

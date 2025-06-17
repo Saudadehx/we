@@ -25,7 +25,7 @@
             <span v-if="teacher.taughtCourses && teacher.taughtCourses.length > 0">
               {{ teacher.taughtCourses.join(', ') }}
             </span>
-            <span v-else class="no-courses">暂未分配课程</span>
+            <span v-else class="no-cours">暂未分配课程</span>
           </td>
           <td>
             <button @click="openEditModal(teacher)" class="action-btn edit">编辑</button>
@@ -153,7 +153,7 @@ const handleDeleteTeacher = async (id) => {
 @import '@/assets/styles/common-page.css';
 @import '@/assets/styles/common-modal.css';
 
-.no-courses {
+.no-cours {
   color: #999;
   font-style: italic;
 }

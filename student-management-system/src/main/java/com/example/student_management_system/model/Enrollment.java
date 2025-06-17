@@ -6,6 +6,6 @@ import lombok.Data;
 public class Enrollment {
     private Long id;
     private Long studentId;
-    private Long courseId;
+    private Long courseOfferingId; // <-- 修改此字段
     private Double score;
 }

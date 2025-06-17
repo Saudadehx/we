@@ -19,8 +19,8 @@
               <div class="time-range">{{ timeSlot.range }}</div>
             </div>
             <div v-for="dayIndex in 7" :key="`${timeSlot.id}-${dayIndex}`" class="class-cell">
-              <div v-if="getCourseAt(dayIndex, timeSlot.id)" class="course-item">
-                <div class="course-details">
+              <div v-if="getCourseAt(dayIndex, timeSlot.id)" class="courseCatalog-item">
+                <div class="courseCatalog-details">
                   <strong>{{ getCourseAt(dayIndex, timeSlot.id).courseName }}</strong>
                   <span>{{ getCourseAt(dayIndex, timeSlot.id).teacherName || 'N/A' }}</span>
                 </div>
@@ -38,7 +38,7 @@
             <span class="summary-value">{{ totalCredits }}</span>
           </div>
         </div>
-        <table class="data-table my-courses-table">
+        <table class="data-table my-cours-table">
           <thead>
           <tr>
             <th>课程编号</th>
@@ -101,10 +101,10 @@ onMounted(fetchMyScheduleAndGrades);
 
 const courseMap = computed(() => {
   const map = new Map();
-  myEnrollments.value.forEach(course => {
-    if (course.courseDay && course.courseTime) {
-      const key = `${course.courseDay}-${course.courseTime}`;
-      map.set(key, course);
+  myEnrollments.value.forEach(courseCatalog => {
+    if (courseCatalog.courseDay && courseCatalog.courseTime) {
+      const key = `${courseCatalog.courseDay}-${courseCatalog.courseTime}`;
+      map.set(key, courseCatalog);
     }
   });
   return map;
@@ -135,9 +135,9 @@ const getScoreClass = (score) => {
 .time-header { justify-content: space-around; }
 .time-slot-id { font-size: 1.1em; font-weight: 700; color: var(--color-primary); }
 .time-range { font-size: 0.8em; color: var(--color-text-secondary); }
-.course-item { width: 100%; height: 100%; padding: 8px; box-sizing: border-box; border-radius: 6px; background-color: var(--color-primary-light); color: var(--color-primary); }
-.course-details strong { color: var(--color-text-primary); }
-.course-details span { font-size: 0.85em; color: var(--color-text-secondary); }
+.courseCatalog-item { width: 100%; height: 100%; padding: 8px; box-sizing: border-box; border-radius: 6px; background-color: var(--color-primary-light); color: var(--color-primary); }
+.courseCatalog-details strong { color: var(--color-text-primary); }
+.courseCatalog-details span { font-size: 0.85em; color: var(--color-text-secondary); }
 .empty-cell { background-color: #fcfdff; width: 100%; height: 100%; border-radius: var(--border-radius); }
 
 .summary-card { padding: 20px; background-color: #f8f9fa; border-bottom: 1px solid var(--color-border); }
@@ -145,7 +145,7 @@ const getScoreClass = (score) => {
 .summary-label { font-size: 1em; color: var(--color-text-secondary); }
 .summary-value { font-size: 1.5em; font-weight: bold; color: var(--color-primary); }
 
-.my-courses-table th, .my-courses-table td { padding: 14px 18px; vertical-align: middle; }
+.my-cours-table th, .my-cours-table td { padding: 14px 18px; vertical-align: middle; }
 .score-col { text-align: center; font-weight: bold; font-size: 1.1em; width: 150px; }
 .score-display.score-pass { color: var(--color-success); }
 .score-display.score-fail { color: var(--color-danger); }

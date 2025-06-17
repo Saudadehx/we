@@ -1,9 +1,9 @@
 package com.example.student_management_system.controller;
 
 import com.example.student_management_system.dto.ApiResult;
-import com.example.student_management_system.dto.CourseResponseDTO;
 import com.example.student_management_system.dto.TeacherDTO;
 import com.example.student_management_system.dto.TeacherDetailDTO;
+import com.example.student_management_system.model.CourseOffering;
 import com.example.student_management_system.model.Teacher;
 import com.example.student_management_system.service.CourseService;
 import com.example.student_management_system.service.TeacherService;
@@ -28,7 +28,8 @@ public class TeacherController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResult<List<TeacherDetailDTO>> getAllTeachers() {
-        return ApiResult.success(teacherService.getAllTeachersWithCourses());
+        // 调用重构后的新方法名
+        return ApiResult.success(teacherService.getAllTeachersWithOfferings());
     }
 
     @PostMapping
@@ -37,18 +38,12 @@ public class TeacherController {
         return ApiResult.success(teacherService.createTeacher(teacherDTO));
     }
 
-    /**
-     * 【新增】更新教师信息
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResult<TeacherDTO> updateTeacher(@PathVariable Long id, @RequestBody TeacherDTO teacherDTO) {
         return ApiResult.success(teacherService.updateTeacher(id, teacherDTO));
     }
 
-    /**
-     * 【新增】删除教师
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResult<?> deleteTeacher(@PathVariable Long id) {
@@ -60,7 +55,8 @@ public class TeacherController {
     // --- 教师接口 ---
     @GetMapping("/me/courses")
     @PreAuthorize("hasRole('TEACHER')")
-    public ApiResult<List<CourseResponseDTO>> getMyCourses(@AuthenticationPrincipal Teacher teacher) {
-        return ApiResult.success(courseService.findCoursesByTeacherId(teacher.getId()));
+    public ApiResult<List<CourseOffering>> getMyCourses(@AuthenticationPrincipal Teacher teacher) {
+        // 调用我们刚刚在 CourseService 中添加的新方法
+        return ApiResult.success(courseService.findOfferingsByTeacherId(teacher.getId()));
     }
 }

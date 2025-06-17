@@ -1,112 +1,76 @@
 <template>
   <div class="page-container">
     <header class="page-header">
-      <h1>课程管理</h1>
-      <button @click="openAddModal" class="add-btn">新增课程</button>
+      <h1>课程安排管理</h1>
+      <button @click="openAddModal({})" class="add-btn">新增课程安排</button>
     </header>
 
     <div class="content-card">
-      <table class="data-table">
-        <thead>
-        <tr>
-          <th>课程编号</th>
-          <th>课程名称</th>
-          <th>类型</th>
-          <th>所属专业</th>
-          <th>学分</th>
-          <th>学年</th>
-          <th>学期</th>
-          <th>授课教师</th>
-          <th>操作</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-if="isLoading">
-          <td colspan="9" style="text-align: center; padding: 20px;">正在加载数据...</td>
-        </tr>
-        <tr v-for="course in courses" :key="course.id">
-          <td>{{ course.courseId }}</td>
-          <td>{{ course.courseName }}</td>
-          <td>{{ course.courseType === 'COMPULSORY' ? '必修' : '选修' }}</td>
-          <td>{{ course.majorName || '通用' }}</td>
-          <td>{{ course.credits }}</td>
-          <td>{{ formatAcademicYear(course.academicYear) }}</td>
-          <td>{{ formatSemester(course.semester) }}</td>
-          <td>{{ course.teacherName }}</td>
-          <td>
-            <button @click="openEditModal(course)" class="action-btn edit">编辑</button>
-            <button @click="handleDeleteCourse(course.id)" class="action-btn delete">删除</button>
-          </td>
-        </tr>
-        </tbody>
-      </table>
+      <ScheduleGrid
+          :schedules="schedules"
+          :majors="majors"
+          @cell-click="handleCellClick"
+          @course-click="handleCourseClick"
+          v-if="!isLoading"
+      />
+      <div v-else>正在加载课表...</div>
     </div>
 
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content" style="width: 500px;">
-        <h2>{{ isEditing ? '编辑课程' : '新增课程' }}</h2>
+        <h2>{{ isEditing ? '编辑课程安排' : '新增课程安排' }}</h2>
         <form @submit.prevent="handleSubmit">
           <div class="form-grid">
             <div class="form-group">
-              <label for="courseId">课程编号</label>
-              <input v-model="editableCourse.courseId" id="courseId" required>
-            </div>
-            <div class="form-group">
-              <label for="courseName">课程名称</label>
-              <input v-model="editableCourse.courseName" id="courseName" required>
-            </div>
-            <div class="form-group">
-              <label for="credits">学分</label>
-              <input type="number" step="0.5" v-model="editableCourse.credits" id="credits" required>
+              <label for="courseId">基础课程</label>
+              <select v-model="editableSchedule.courseId" id="courseId" required>
+                <option disabled value="">请选择基础课程</option>
+                <option v-for="course in courses" :key="course.id" :value="course.id">
+                  {{ course.courseName }} ({{ course.courseId }})
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label for="teacherId">授课教师</label>
-              <select v-model="editableCourse.teacherId" id="teacherId" required>
-                <option disabled value="">请选择</option>
-                <option v-for="teacher in teachers" :key="teacher.teacherId" :value="teacher.teacherId">
+              <select v-model="editableSchedule.teacherId" id="teacherId" required>
+                <option disabled value="">请选择教师</option>
+                <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
                   {{ teacher.name }} ({{ teacher.teacherId }})
                 </option>
               </select>
             </div>
             <div class="form-group">
-              <label for="courseType">课程类型</label>
-              <select v-model="editableCourse.courseType" id="courseType" required>
-                <option value="ELECTIVE">选修</option>
-                <option value="COMPULSORY">必修</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="majorId">所属专业</label>
-              <select v-model="editableCourse.majorId" id="majorId" :disabled="editableCourse.courseType !== 'COMPULSORY'">
-                <option :value="null">通用（仅选修课可选）</option>
+              <label for="majorId">所属专业 (必修课)</label>
+              <select v-model="editableSchedule.majorId" id="majorId">
+                <option :value="null">通用选修课或未指定</option>
                 <option v-for="major in majors" :key="major.id" :value="major.id">{{ major.name }}</option>
               </select>
             </div>
             <div class="form-group">
               <label for="academicYear">开设学年</label>
-              <select v-model="editableCourse.academicYear" id="academicYear">
-                <option :value="null">不限</option>
+              <select v-model="editableSchedule.academicYear" id="academicYear" required>
+                <option disabled value="">请选择</option>
                 <option v-for="n in 4" :key="n" :value="n">第 {{ n }} 学年</option>
               </select>
             </div>
             <div class="form-group">
               <label for="semester">开设学期</label>
-              <select v-model="editableCourse.semester" id="semester">
-                <option :value="null">不限</option>
+              <select v-model="editableSchedule.semester" id="semester" required>
+                <option disabled value="">请选择</option>
                 <option value="1">上学期</option>
                 <option value="2">下学期</option>
               </select>
             </div>
             <div class="form-group">
               <label for="courseDay">上课日</label>
-              <select v-model="editableCourse.courseDay" id="courseDay">
+              <select v-model="editableSchedule.courseDay" id="courseDay">
                 <option :value="null">未安排</option>
                 <option v-for="day in 7" :key="day" :value="day">星期{{ '一二三四五六日'[day-1] }}</option>
               </select>
             </div>
             <div class="form-group">
               <label for="courseTime">上课时段</label>
-              <select v-model="editableCourse.courseTime" id="courseTime">
+              <select v-model="editableSchedule.courseTime" id="courseTime">
                 <option :value="null">未安排</option>
                 <option v-for="time in 5" :key="time" :value="time">第 {{ time }} 大节</option>
               </select>
@@ -114,6 +78,8 @@
           </div>
 
           <div class="modal-actions">
+            <button type="button" @click="handleDelete" class="delete-btn" v-if="isEditing">删除</button>
+            <div style="flex-grow: 1;"></div>
             <button type="button" @click="closeModal">取消</button>
             <button type="submit" :disabled="isSubmitting">{{ isSubmitting ? '处理中...' : '提交' }}</button>
           </div>
@@ -124,36 +90,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { courseService, teacherService, majorService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
+import ScheduleGrid from '@/components/ScheduleGrid.vue';
 
+const schedules = ref([]);
 const courses = ref([]);
 const teachers = ref([]);
-const majors = ref([]); // 新增
+const majors = ref([]);
 const isLoading = ref(true);
 const isSubmitting = ref(false);
 const showModal = ref(false);
 const isEditing = ref(false);
 
-const getNewEditableCourse = () => ({
-  id: null, courseId: '', courseName: '', credits: null, teacherId: '',
-  courseDay: null, courseTime: null,
-  courseType: 'ELECTIVE', majorId: null, academicYear: null, semester: null,
+const getNewEditableSchedule = () => ({
+  id: null, courseId: '', teacherId: '', majorId: null,
+  academicYear: '', semester: '', courseDay: null, courseTime: null,
 });
 
-const editableCourse = ref(getNewEditableCourse());
-
-watch(() => editableCourse.value.courseType, (newType) => {
-  if (newType === 'ELECTIVE') {
-    editableCourse.value.majorId = null;
-  }
-});
+const editableSchedule = ref(getNewEditableSchedule());
 
 const fetchAllData = async () => {
   isLoading.value = true;
   try {
     await Promise.all([
+      (async () => schedules.value = await courseService.getAllSchedules())(),
       (async () => courses.value = await courseService.getAll())(),
       (async () => teachers.value = await teacherService.getAll())(),
       (async () => majors.value = await majorService.getAll())(),
@@ -167,52 +129,41 @@ const fetchAllData = async () => {
 
 onMounted(fetchAllData);
 
-const formatAcademicYear = (year) => {
-  return year ? `第 ${year} 学年` : '不限';
-};
-
-const formatSemester = (semester) => {
-  if (semester === 1) return '上学期';
-  if (semester === 2) return '下学期';
-  return '不限';
-};
-
-const resetForm = () => editableCourse.value = getNewEditableCourse();
-
-const openAddModal = () => {
-  resetForm();
+const openAddModal = (initialData) => {
   isEditing.value = false;
+  editableSchedule.value = { ...getNewEditableSchedule(), ...initialData };
   showModal.value = true;
 };
 
-const openEditModal = (course) => {
-  editableCourse.value = { ...course };
+const openEditModal = (schedule) => {
   isEditing.value = true;
+  editableSchedule.value = { ...schedule };
   showModal.value = true;
 };
 
-const closeModal = () => showModal.value = false;
+const handleCellClick = ({ day, time }) => {
+  openAddModal({ courseDay: day, courseTime: time });
+};
+
+const handleCourseClick = (course) => {
+  openEditModal(course);
+};
+
+const closeModal = () => {
+  showModal.value = false;
+};
 
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
 
-  const payload = { ...editableCourse.value };
-  if (payload.courseType === 'ELECTIVE') {
-    payload.majorId = null; // 确保选修课的majorId为null
-  } else if (!payload.majorId) {
-    showNotification('必修课必须选择一个专业', 'error');
-    isSubmitting.value = false;
-    return;
-  }
-
   try {
     if (isEditing.value) {
-      await courseService.update(payload.id, payload);
-      showNotification('课程更新成功！', 'success');
+      await courseService.updateSchedule(editableSchedule.value.id, editableSchedule.value);
+      showNotification('课程安排更新成功！', 'success');
     } else {
-      await courseService.create(payload);
-      showNotification('课程创建成功！', 'success');
+      await courseService.createSchedule(editableSchedule.value);
+      showNotification('课程安排创建成功！', 'success');
     }
     closeModal();
     await fetchAllData();
@@ -223,14 +174,20 @@ const handleSubmit = async () => {
   }
 };
 
-const handleDeleteCourse = async (courseId) => {
-  if (!confirm('确定要删除这门课程吗？')) return;
+const handleDelete = async () => {
+  if (!isEditing.value || !editableSchedule.value.id) return;
+  if (!confirm('确定要删除这个课程安排吗？')) return;
+
+  isSubmitting.value = true;
   try {
-    await courseService.delete(courseId);
-    showNotification('课程删除成功！', 'success');
+    await courseService.deleteSchedule(editableSchedule.value.id);
+    showNotification('课程安排删除成功！', 'success');
+    closeModal();
     await fetchAllData();
   } catch (error) {
     showNotification(error.message || '删除失败', 'error');
+  } finally {
+    isSubmitting.value = false;
   }
 };
 </script>
@@ -252,5 +209,11 @@ select {
   border-radius: 4px;
   box-sizing: border-box;
   background-color: #fff;
+}
+.modal-actions .delete-btn {
+  background-color: #fdf2f2;
+  color: var(--color-danger);
+  border-color: #f5c6cb;
+  margin-right: auto;
 }
 </style>

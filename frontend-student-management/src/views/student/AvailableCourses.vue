@@ -17,7 +17,7 @@
 
     <div v-else>
       <div class="content-card">
-        <table class="data-table available-courses-table">
+        <table class="data-table available-cours-table">
           <thead>
           <tr>
             <th>课程编号</th>
@@ -30,34 +30,34 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="course in availableCourses" :key="course.id" class="table-row">
-            <td>{{ course.courseId }}</td>
-            <td>{{ course.courseName }}</td>
+          <tr v-for="courseCatalog in availableCourses" :key="courseCatalog.id" class="table-row">
+            <td>{{ courseCatalog.courseId }}</td>
+            <td>{{ courseCatalog.courseName }}</td>
             <td>
-                <span class="course-type" :class="course.courseType.toLowerCase()">
-                    {{ course.courseType === 'COMPULSORY' ? '必修' : '选修' }}
+                <span class="courseCatalog-type" :class="courseCatalog.courseType.toLowerCase()">
+                    {{ courseCatalog.courseType === 'COMPULSORY' ? '必修' : '选修' }}
                 </span>
             </td>
-            <td>{{ course.credits }}</td>
-            <td>{{ course.teacherName }}</td>
-            <td>{{ formatCourseTime(course.courseDay, course.courseTime) }}</td>
+            <td>{{ courseCatalog.credits }}</td>
+            <td>{{ courseCatalog.teacherName }}</td>
+            <td>{{ formatCourseTime(courseCatalog.courseDay, courseCatalog.courseTime) }}</td>
             <td class="action-col">
-              <template v-if="isEnrolled(course.id)">
-                  <span v-if="isCompulsory(course.id) || hasGrade(course.id)" class="status-tag non-withdrawable-tag">
+              <template v-if="isEnrolled(courseCatalog.id)">
+                  <span v-if="isCompulsory(courseCatalog.id) || hasGrade(courseCatalog.id)" class="status-tag non-withdrawable-tag">
                       不可退
                   </span>
-                <button v-else @click="handleWithdraw(getEnrollmentId(course.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
+                <button v-else @click="handleWithdraw(getEnrollmentId(courseCatalog.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
                   退课
                 </button>
               </template>
               <template v-else>
                 <button
-                    @click="handleEnroll(course.id)"
+                    @click="handleEnroll(courseCatalog.id)"
                     class="action-btn enroll-btn"
-                    :disabled="isEnrolling || hasConflict(course) || isCompulsory(course.id)"
+                    :disabled="isEnrolling || hasConflict(courseCatalog) || isCompulsory(courseCatalog.id)"
                 >
-                  <span v-if="isCompulsory(course.id)">系统预置</span>
-                  <span v-else-if="hasConflict(course)">时间冲突</span>
+                  <span v-if="isCompulsory(courseCatalog.id)">系统预置</span>
+                  <span v-else-if="hasConflict(courseCatalog)">时间冲突</span>
                   <span v-else>选课</span>
                 </button>
               </template>
@@ -122,33 +122,33 @@ watch(availableCourses, (newCourses) => {
 const mySchedule = computed(() => new Set(myEnrollments.value.filter(e => e.courseDay && e.courseTime).map(e => `${e.courseDay}-${e.courseTime}`)));
 
 const isEnrolled = (courseDbId) => {
-  const course = myCourseMap.value.get(courseDbId);
-  if (!course) return false;
-  return myEnrollments.value.some(e => e.courseId === course.courseId);
+  const courseCatalog = myCourseMap.value.get(courseDbId);
+  if (!courseCatalog) return false;
+  return myEnrollments.value.some(e => e.courseId === courseCatalog.courseId);
 };
 
 const getEnrollmentId = (courseDbId) => {
-  const course = myCourseMap.value.get(courseDbId);
-  if (!course) return null;
-  return myEnrollments.value.find(e => e.courseId === course.courseId)?.enrollmentId;
+  const courseCatalog = myCourseMap.value.get(courseDbId);
+  if (!courseCatalog) return null;
+  return myEnrollments.value.find(e => e.courseId === courseCatalog.courseId)?.enrollmentId;
 };
 
 const hasGrade = (courseDbId) => {
-  const course = myCourseMap.value.get(courseDbId);
-  if (!course) return false;
-  const enrollment = myEnrollments.value.find(e => e.courseId === course.courseId);
+  const courseCatalog = myCourseMap.value.get(courseDbId);
+  if (!courseCatalog) return false;
+  const enrollment = myEnrollments.value.find(e => e.courseId === courseCatalog.courseId);
   return enrollment && enrollment.score !== null;
 };
 
 const isCompulsory = (courseDbId) => {
-  const course = myCourseMap.value.get(courseDbId);
-  return course && course.courseType === 'COMPULSORY';
+  const courseCatalog = myCourseMap.value.get(courseDbId);
+  return courseCatalog && courseCatalog.courseType === 'COMPULSORY';
 };
 
-const hasConflict = (course) => {
-  if (isEnrolled(course.id)) return false;
-  if (!course.courseDay || !course.courseTime) return false;
-  return mySchedule.value.has(`${course.courseDay}-${course.courseTime}`);
+const hasConflict = (courseCatalog) => {
+  if (isEnrolled(courseCatalog.id)) return false;
+  if (!courseCatalog.courseDay || !courseCatalog.courseTime) return false;
+  return mySchedule.value.has(`${courseCatalog.courseDay}-${courseCatalog.courseTime}`);
 };
 
 const handleEnroll = async (courseDbId) => {
@@ -189,17 +189,17 @@ const formatCourseTime = (day, time) => {
 <style scoped>
 @import '@/assets/styles/common-page.css';
 
-.course-type {
+.courseCatalog-type {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.85em;
   font-weight: 600;
   color: white;
 }
-.course-type.compulsory {
+.courseCatalog-type.compulsory {
   background-color: var(--color-danger);
 }
-.course-type.elective {
+.courseCatalog-type.elective {
   background-color: var(--color-success);
 }
 .status-tag {

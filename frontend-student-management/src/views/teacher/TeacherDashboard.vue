@@ -7,15 +7,15 @@
 
     <div v-if="isLoading" class="loading-indicator">正在加载您的课程数据...</div>
 
-    <div v-else class="course-grid">
-      <div v-for="course in courses" :key="course.id" class="course-card" @click="goToGradeEntry(course.id)">
+    <div v-else class="courseCatalog-grid">
+      <div v-for="courseCatalog in courses" :key="courseCatalog.id" class="courseCatalog-card" @click="goToGradeEntry(courseCatalog.id)">
         <div class="card-header">
           <span class="card-icon">&#128218;</span>
-          <h3>{{ course.courseName }}</h3>
+          <h3>{{ courseCatalog.courseName }}</h3>
         </div>
         <div class="card-body">
-          <p><strong>课程编号:</strong> {{ course.courseId }}</p>
-          <p><strong>学分:</strong> {{ course.credits }}</p>
+          <p><strong>课程编号:</strong> {{ courseCatalog.courseId }}</p>
+          <p><strong>学分:</strong> {{ courseCatalog.credits }}</p>
         </div>
         <div class="card-footer">
           <span>进入成绩录入</span>
@@ -69,13 +69,13 @@ onMounted(fetchMyCourses);
   color: var(--color-text-secondary);
 }
 
-.course-grid {
+.courseCatalog-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
 }
 
-.course-card {
+.courseCatalog-card {
   background-color: #fff;
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
@@ -86,7 +86,7 @@ onMounted(fetchMyCourses);
   overflow: hidden; /* 保证子元素圆角 */
 }
 
-.course-card:hover {
+.courseCatalog-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0,0,0,0.12);
 }

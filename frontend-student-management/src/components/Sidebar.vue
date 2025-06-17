@@ -16,7 +16,7 @@
         <router-link to="/dashboard/students" class="nav-item">
           <span class="nav-text">学生管理</span>
         </router-link>
-        <router-link to="/dashboard/courses" class="nav-item">
+        <router-link to="/dashboard/cours" class="nav-item">
           <span class="nav-text">课程管理</span>
         </router-link>
         <router-link to="/dashboard/majors" class="nav-item">
@@ -43,7 +43,7 @@
         <router-link to="/student/schedule" class="nav-item">
           <span class="nav-text">课表与成绩</span>
         </router-link>
-        <router-link to="/student/available-courses" class="nav-item">
+        <router-link to="/student/available-cours" class="nav-item">
           <span class="nav-text">选课中心</span>
         </router-link>
       </template>

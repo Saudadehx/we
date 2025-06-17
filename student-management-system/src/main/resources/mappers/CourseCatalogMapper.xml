@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.CourseCatalogMapper">
+
+    <resultMap id="CourseCatalogResultMap" type="com.example.student_management_system.model.CourseCatalog">
+        <id property="id" column="id"/>
+        <result property="courseCode" column="course_code"/>
+        <result property="name" column="name"/>
+        <result property="credits" column="credits"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, course_code, name, credits
+    </sql>
+
+    <select id="findById" parameterType="long" resultMap="CourseCatalogResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM course_catalogs WHERE id = #{id}
+    </select>
+
+    <select id="findByCourseCode" parameterType="string" resultMap="CourseCatalogResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM course_catalogs WHERE course_code = #{courseCode}
+    </select>
+
+    <select id="findAll" resultMap="CourseCatalogResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM course_catalogs ORDER BY course_code
+    </select>
+
+    <insert id="insert" parameterType="com.example.student_management_system.model.CourseCatalog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_catalogs(course_code, name, credits)
+        VALUES(#{courseCode}, #{name}, #{credits})
+    </insert>
+
+    <update id="update" parameterType="com.example.student_management_system.model.CourseCatalog">
+        UPDATE course_catalogs
+        SET course_code = #{courseCode}, name = #{name}, credits = #{credits}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM course_catalogs WHERE id = #{id}
+    </delete>
+
+</mapper>

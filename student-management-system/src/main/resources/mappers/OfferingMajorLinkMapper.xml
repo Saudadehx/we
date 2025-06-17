@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.OfferingMajorLinkMapper">
+
+    <insert id="insert">
+        INSERT INTO offering_major_links(course_offering_id, major_id, course_type)
+        VALUES (#{courseOfferingId}, #{majorId}, #{courseType})
+    </insert>
+
+    <delete id="deleteByOfferingId">
+        DELETE FROM offering_major_links WHERE course_offering_id = #{offeringId}
+    </delete>
+
+    <select id="findOfferingsByMajorAndTimetable" resultType="com.example.student_management_system.model.CourseOffering">
+        SELECT o.* FROM course_offerings o
+        JOIN offering_major_links l ON o.id = l.course_offering_id
+        WHERE l.major_id = #{majorId}
+        AND o.academic_year = #{academicYear}
+        AND o.semester = #{semester}
+        AND o.course_day = #{courseDay}
+        AND o.course_time = #{courseTime}
+        <if test="excludeOfferingId != null">
+            AND o.id != #{excludeOfferingId}
+        </if>
+    </select>
+
+    <select id="findCompulsoryOfferingsForMajor" resultType="com.example.student_management_system.model.CourseOffering">
+        SELECT o.* FROM course_offerings o
+                            JOIN offering_major_links l ON o.id = l.course_offering_id
+        WHERE l.major_id = #{majorId}
+          AND o.academic_year = #{academicYear}
+          AND o.semester = #{semester}
+          AND l.course_type = 'COMPULSORY'
+    </select>
+</mapper>

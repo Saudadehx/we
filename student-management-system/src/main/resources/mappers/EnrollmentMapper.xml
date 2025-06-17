@@ -10,11 +10,11 @@
     </resultMap>
 
     <select id="findByStudentId" parameterType="long" resultMap="EnrollmentResultMap">
-        SELECT id, student_id, course_id, score FROM enrollments WHERE student_id = #{studentId}
+        SELECT id, student_id, course_offering_id, score FROM enrollments WHERE student_id = #{studentId}
     </select>
 
-    <select id="findByCourseId" parameterType="long" resultMap="EnrollmentResultMap">
-        SELECT id, student_id, course_id, score FROM enrollments WHERE course_id = #{courseId}
+    <select id="findByCourseOfferingId" parameterType="long" resultMap="EnrollmentResultMap">
+        SELECT id, student_id, course_offering_id, score FROM enrollments WHERE course_offering_id = #{courseOfferingId}
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.Enrollment">

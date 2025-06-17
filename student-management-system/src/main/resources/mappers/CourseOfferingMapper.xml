@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.CourseOfferingMapper">
+
+    <resultMap id="OfferingWithDetailsResultMap" type="com.example.student_management_system.model.CourseOffering">
+        <id property="id" column="offering_id"/>
+        <result property="courseCatalogId" column="course_catalog_id"/>
+        <result property="teacherId" column="teacher_id"/>
+        <result property="academicYear" column="academic_year"/>
+        <result property="semester" column="semester"/>
+        <result property="courseDay" column="course_day"/>
+        <result property="courseTime" column="course_time"/>
+
+        <result property="courseName" column="course_name"/>
+        <result property="courseCode" column="course_code"/>
+        <result property="credits" column="credits"/>
+        <result property="teacherName" column="teacher_name"/>
+
+        <collection property="associatedMajors" ofType="com.example.student_management_system.model.CourseOffering$MajorInfo">
+            <result property="majorId" column="major_id"/>
+            <result property="majorName" column="major_name"/>
+            <result property="courseType" column="course_type"/>
+        </collection>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.student_management_system.model.CourseOffering" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_offerings(course_catalog_id, teacher_id, academic_year, semester, course_day, course_time)
+        VALUES (#{courseCatalogId}, #{teacherId}, #{academicYear}, #{semester}, #{courseDay}, #{courseTime})
+    </insert>
+
+    <update id="update" parameterType="com.example.student_management_system.model.CourseOffering">
+        UPDATE course_offerings
+        SET course_catalog_id = #{courseCatalogId},
+            teacher_id = #{teacherId},
+            academic_year = #{academicYear},
+            semester = #{semester},
+            course_day = #{courseDay},
+            course_time = #{courseTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM course_offerings WHERE id = #{id}
+    </delete>
+
+    <select id="findById" parameterType="long" resultMap="OfferingWithDetailsResultMap">
+        SELECT
+            co.id as offering_id,
+            co.course_catalog_id,
+            co.teacher_id,
+            co.academic_year,
+            co.semester,
+            co.course_day,
+            co.course_time,
+            cc.name as course_name,
+            cc.course_code,
+            cc.credits,
+            t.name as teacher_name,
+            oml.course_type,
+            m.id as major_id,
+            m.name as major_name
+        FROM course_offerings co
+                 JOIN course_catalogs cc ON co.course_catalog_id = cc.id
+                 LEFT JOIN teachers t ON co.teacher_id = t.id
+                 LEFT JOIN offering_major_links oml ON co.id = oml.course_offering_id
+                 LEFT JOIN majors m ON oml.major_id = m.id
+        WHERE co.id = #{id}
+    </select>
+
+    <select id="findAllWithDetails" resultMap="OfferingWithDetailsResultMap">
+        SELECT
+            co.id as offering_id,
+            co.course_catalog_id,
+            co.teacher_id,
+            co.academic_year,
+            co.semester,
+            co.course_day,
+            co.course_time,
+            cc.name as course_name,
+            cc.course_code,
+            cc.credits,
+            t.name as teacher_name,
+            oml.course_type,
+            m.id as major_id,
+            m.name as major_name
+        FROM course_offerings co
+                 JOIN course_catalogs cc ON co.course_catalog_id = cc.id
+                 LEFT JOIN teachers t ON co.teacher_id = t.id
+                 LEFT JOIN offering_major_links oml ON co.id = oml.course_offering_id
+                 LEFT JOIN majors m ON oml.major_id = m.id
+        ORDER BY co.academic_year, co.semester, co.course_day, co.course_time
+    </select>
+
+    <select id="findOfferingsByTeacherAndTimetable" resultType="com.example.student_management_system.model.CourseOffering">
+        SELECT * FROM course_offerings
+        WHERE teacher_id = #{teacherId}
+        AND academic_year = #{academicYear}
+        AND semester = #{semester}
+        AND course_day = #{courseDay}
+        AND course_time = #{courseTime}
+        <if test="excludeOfferingId != null">
+            AND id != #{excludeOfferingId}
+        </if>
+    </select>
+
+    <update id="disassociateTeacherFromOfferings">
+        UPDATE course_offerings
+        SET teacher_id = NULL
+        WHERE teacher_id = #{teacherId}
+    </update>
+
+    <select id="findOfferingsByTeacherId" parameterType="long" resultMap="OfferingWithDetailsResultMap">
+        SELECT
+            co.id as offering_id,
+            co.course_catalog_id,
+            co.teacher_id,
+            co.academic_year,
+            co.semester,
+            co.course_day,
+            co.course_time,
+            cc.name as course_name,
+            cc.course_code,
+            cc.credits,
+            t.name as teacher_name,
+            oml.course_type,
+            m.id as major_id,
+            m.name as major_name
+        FROM course_offerings co
+                 JOIN course_catalogs cc ON co.course_catalog_id = cc.id
+                 LEFT JOIN teachers t ON co.teacher_id = t.id
+                 LEFT JOIN offering_major_links oml ON co.id = oml.course_offering_id
+                 LEFT JOIN majors m ON oml.major_id = m.id
+        WHERE co.teacher_id = #{teacherId}
+    </select>
+
+</mapper>
