@@ -70,26 +70,103 @@
     </div>
 
     <div v-if="showOfferingModal" class="modal-overlay" @click.self="closeOfferingModal">
-      <div class="modal-content stylish-modal">
-        <h2>{{ isEditing ? '编辑课程安排' : '新增课程安排' }}</h2>
+      <div class="modal-content stylish-modal redesigned-modal">
+        <header class="modal-header-redesigned">
+          <h2>{{ isEditing ? '编辑课程安排' : '新增课程安排' }}</h2>
+          <p>请填写课程的具体教学安排和面向对象。</p>
+        </header>
+
         <form @submit.prevent="handleOfferingSubmit">
-          <div class="form-grid">
-            <div class="form-group"><label>基础课程</label><select v-model="editableOffering.courseCatalogId" required><option disabled value="">请选择</option><option v-for="c in catalogs" :key="c.id" :value="c.id">{{c.name}} ({{c.courseCode}})</option></select></div>
-            <div class="form-group"><label>授课教师</label><select v-model="editableOffering.teacherId" required><option disabled value="">请选择</option><option v-for="t in teachers" :key="t.id" :value="t.id">{{t.name}} ({{t.teacherId}})</option></select></div>
-            <div class="form-group"><label>开设学年</label><select v-model.number="editableOffering.academicYear" required><option v-for="n in 4" :key="n" :value="n">第 {{n}} 学年</option></select></div>
-            <div class="form-group"><label>开设学期</label><select v-model.number="editableOffering.semester" required><option value="1">上学期</option><option value="2">下学期</option></select></div>
-            <div class="form-group"><label>上课日</label><select v-model.number="editableOffering.courseDay"><option :value="null">未安排</option><option v-for="d in 7" :key="d" :value="d">星期{{'一二三四五六日'[d-1]}}</option></select></div>
-            <div class="form-group"><label>上课时段</label><select v-model.number="editableOffering.courseTime"><option :value="null">未安排</option><option v-for="t in 5" :key="t" :value="t">第 {{t}} 大节</option></select></div>
+          <div class="modal-body-redesigned">
+            <fieldset class="form-section">
+              <legend>核心安排</legend>
+              <div class="form-row">
+                <div class="form-group flex-grow">
+                  <label>基础课程</label>
+                  <select v-model="editableOffering.courseCatalogId" required>
+                    <option disabled value="">请选择一个基础课程</option>
+                    <option v-for="c in catalogs" :key="c.id" :value="c.id">{{c.name}} ({{c.courseCode}})</option>
+                  </select>
+                </div>
+                <div class="form-group flex-grow">
+                  <label>授课教师</label>
+                  <select v-model="editableOffering.teacherId" required>
+                    <option disabled value="">请选择一位授课教师</option>
+                    <option v-for="t in teachers" :key="t.id" :value="t.id">{{t.name}} ({{t.teacherId}})</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend>时间计划</legend>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>开设学年</label>
+                  <select v-model.number="editableOffering.academicYear" required>
+                    <option v-for="n in 4" :key="n" :value="n">第 {{n}} 学年</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>开设学期</label>
+                  <select v-model.number="editableOffering.semester" required>
+                    <option value="1">上学期</option>
+                    <option value="2">下学期</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>上课日</label>
+                  <select v-model.number="editableOffering.courseDay">
+                    <option :value="null">未安排</option>
+                    <option v-for="d in 7" :key="d" :value="d">星期{{'一二三四五六日'[d-1]}}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>上课时段</label>
+                  <select v-model.number="editableOffering.courseTime">
+                    <option :value="null">未安排</option>
+                    <option v-for="t in 5" :key="t" :value="t">第 {{t}} 大节</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend>教学对象 (用于指定必修/选修)</legend>
+              <div class="major-links-container">
+                <div v-for="(link, index) in editableOffering.associatedMajors" :key="index" class="major-link-item-redesigned">
+                  <div class="form-group flex-grow">
+                    <select v-model="link.majorId" class="major-select">
+                      <option disabled value="">选择专业</option>
+                      <option v-for="m in majors" :key="m.id" :value="m.id">{{m.name}}</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <select v-model="link.courseType" class="type-select">
+                      <option value="COMPULSORY">必修</option>
+                      <option value="ELECTIVE">选修</option>
+                    </select>
+                  </div>
+                  <button type="button" @click="removeMajorLink(index)" class="remove-link-btn-redesigned">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
+              </div>
+              <button type="button" @click="addMajorLink" class="add-link-btn-redesigned">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>添加专业关联</span>
+              </button>
+            </fieldset>
           </div>
-          <div class="form-group" style="margin-top: 20px;"><label>关联专业 (用于指定必修/选修)</label>
-            <div v-for="(link, index) in editableOffering.associatedMajors" :key="index" class="major-link-item">
-              <select v-model="link.majorId"><option disabled value="">选择专业</option><option v-for="m in majors" :key="m.id" :value="m.id">{{m.name}}</option></select>
-              <select v-model="link.courseType"><option value="COMPULSORY">必修</option><option value="ELECTIVE">选修</option></select>
-              <button type="button" @click="removeMajorLink(index)" class="remove-link-btn">-</button>
-            </div>
-            <button type="button" @click="addMajorLink" class="add-link-btn">+ 添加专业关联</button>
+
+          <div class="modal-actions">
+            <button type="button" @click="handleOfferingDelete" class="delete-btn-redesigned" v-if="isEditing">删除</button>
+            <div style="flex-grow: 1;"></div>
+            <button type="button" @click="closeOfferingModal" class="cancel-btn-redesigned">取消</button>
+            <button type="submit" :disabled="isSubmitting" class="submit-btn-redesigned">
+              {{ isSubmitting ? '处理中...' : (isEditing ? '保存更新' : '确认新增') }}
+            </button>
           </div>
-          <div class="modal-actions"><button type="button" @click="handleOfferingDelete" class="action-btn delete" v-if="isEditing">删除</button><div style="flex-grow: 1;"></div><button type="button" @click="closeOfferingModal">取消</button><button type="submit" :disabled="isSubmitting">{{ isSubmitting ? '处理中...' : '提交' }}</button></div>
         </form>
       </div>
     </div>
@@ -157,7 +234,6 @@ const filters = ref({ majorId: null, searchQuery: '' });
 const hasFiltersApplied = computed(() => filters.value.majorId !== null || filters.value.searchQuery !== '');
 
 const filteredOfferings = computed(() => {
-  // 如果没有应用任何筛选，返回空数组，避免在右侧课程表显示全部课程
   if (!hasFiltersApplied.value) return [];
 
   return allOfferings.value.filter(offering => {
@@ -272,6 +348,7 @@ const handleCatalogDelete = async (id) => {
 
 <style scoped>
 @import '@/assets/styles/common-page.css';
+/* 引入通用模态框样式以确保基础样式一致 */
 @import '@/assets/styles/common-modal.css';
 
 /* --- 整体布局 --- */
@@ -320,25 +397,187 @@ const handleCatalogDelete = async (id) => {
 .placeholder-icon { color: #dee2e6; }
 .footer-btn {
   width: 100%;
-  padding: 14px; /* 增大按钮 */
-  font-size: 1em; /* 增大字体 */
+  padding: 14px;
+  font-size: 1em;
   font-weight: 500;
   background-color: #f8f9fa;
   color: var(--color-text-primary);
   border: 1px solid #dee2e6;
-  border-radius: 8px; /* 统一圆角 */
+  border-radius: 8px;
   transition: all 0.2s;
 }
 .footer-btn:hover { background-color: #e9ecef; border-color: #ced4da; }
 
-/* --- 美化后的模态框 --- */
-.stylish-modal { width: 650px; max-width: 95vw; }
-.stylish-modal h2 { margin-bottom: 24px; font-size: 1.5em; font-weight: 600; }
-.stylish-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; }
-.stylish-modal .form-group { margin-bottom: 0; }
-.stylish-modal .form-group label { margin-bottom: 8px; font-weight: 500; font-size: 0.9em; }
-.stylish-modal .form-group input, .stylish-modal .form-group select { padding-top: 10px; padding-bottom: 10px; }
-.stylish-modal .major-link-item, .stylish-modal .add-link-btn { margin-top: 8px; }
+/* ====================================================== */
+/* ============== V 这里是美化后的模态框样式 ============== */
+/* ====================================================== */
+
+.redesigned-modal {
+  width: 700px;
+  max-width: 90vw;
+  padding: 0; /* 内部控制padding */
+}
+
+.modal-header-redesigned {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header-redesigned h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.6em;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.modal-header-redesigned p {
+  margin: 0;
+  font-size: 1em;
+  color: var(--color-text-secondary);
+}
+
+.modal-body-redesigned {
+  padding: 24px 32px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.form-section {
+  border: none;
+  padding: 0 0 24px 0;
+  margin: 0 0 24px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+.form-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.form-section legend {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding: 0;
+  color: var(--color-primary);
+}
+
+.form-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.form-group.flex-grow {
+  flex: 1 1 0;
+}
+
+.major-links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.major-link-item-redesigned {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--color-background);
+  padding: 12px;
+  border-radius: var(--border-radius);
+}
+
+.major-link-item-redesigned .major-select {
+  flex-grow: 1;
+}
+
+.major-link-item-redesigned .type-select {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.remove-link-btn-redesigned {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  background-color: #fff;
+  color: var(--color-danger);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.remove-link-btn-redesigned:hover {
+  background-color: var(--color-danger);
+  color: #fff;
+  border-color: var(--color-danger);
+}
+
+.add-link-btn-redesigned {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  border: 2px dashed var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.add-link-btn-redesigned:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* 统一模态框的 Actions 区域按钮样式 */
+.redesigned-modal .modal-actions {
+  padding: 24px 32px;
+  border-top: 1px solid var(--color-border);
+  background-color: #f8f9fa;
+}
+.redesigned-modal .modal-actions button {
+  padding: 10px 24px;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.delete-btn-redesigned {
+  background-color: transparent;
+  color: var(--color-danger);
+  border: none;
+}
+.delete-btn-redesigned:hover {
+  text-decoration: underline;
+}
+
+.cancel-btn-redesigned {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  color: var(--color-text-primary);
+}
+.cancel-btn-redesigned:hover {
+  background-color: #f1f1f1;
+}
+
+.submit-btn-redesigned {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--color-primary);
+}
+.submit-btn-redesigned:disabled {
+  background-color: #a0c3e2;
+  border-color: #a0c3e2;
+  cursor: not-allowed;
+}
+
 
 /* --- 课程目录模态框内表格 --- */
 .table-container { max-height: 60vh; overflow-y: auto; border: 1px solid #dee2e6; border-radius: var(--border-radius); }
