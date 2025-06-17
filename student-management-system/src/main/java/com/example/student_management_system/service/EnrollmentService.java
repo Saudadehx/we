@@ -224,6 +224,10 @@ public class EnrollmentService {
             EnrollmentResponseDTO dto = new EnrollmentResponseDTO();
             dto.setEnrollmentId(enrollment.getId());
             dto.setScore(enrollment.getScore());
+
+            // 【核心新增】为DTO设置 courseOfferingId
+            dto.setCourseOfferingId(enrollment.getCourseOfferingId());
+
             CourseOffering offering = courseOfferingMapper.findById(enrollment.getCourseOfferingId());
             if (offering != null) {
                 dto.setCourseName(offering.getCourseName());
