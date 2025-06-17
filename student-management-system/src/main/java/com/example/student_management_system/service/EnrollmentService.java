@@ -228,7 +228,7 @@ public class EnrollmentService {
     /**
      * 内部核心选课逻辑
      */
-    private Enrollment enrollCourseForStudentInternal(Long offeringDbId, Long studentDbId) {
+    public Enrollment enrollCourseForStudentInternal(Long offeringDbId, Long studentDbId) {
         List<Enrollment> enrollments = enrollmentMapper.findByStudentId(studentDbId);
         if (!CollectionUtils.isEmpty(enrollments)) {
             boolean alreadyEnrolled = enrollments.stream().anyMatch(e -> e.getCourseOfferingId().equals(offeringDbId));

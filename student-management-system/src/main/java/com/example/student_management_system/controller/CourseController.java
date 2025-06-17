@@ -1,9 +1,10 @@
 package com.example.student_management_system.controller;
 
 import com.example.student_management_system.dto.ApiResult;
-import com.example.student_management_system.model.CourseCatalog;
+import com.example.student_management_system.dto.CourseCatalogDTO; // ✨ 修改：导入DTO
 import com.example.student_management_system.model.CourseOffering;
 import com.example.student_management_system.service.CourseService;
+import jakarta.validation.Valid; // ✨ 新增：导入校验注解
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,16 +21,29 @@ public class CourseController {
 
     // --- 课程目录接口 ---
     @GetMapping("/course-catalogs")
-    public ApiResult<List<CourseCatalog>> getAllCatalogs() {
+    public ApiResult<List<CourseCatalogDTO>> getAllCatalogs() { // ✨ 修改：返回DTO
         return ApiResult.success(courseService.getAllCatalogs());
     }
 
     @PostMapping("/course-catalogs")
-    public ApiResult<CourseCatalog> createCatalog(@RequestBody CourseCatalog catalog) {
+    public ApiResult<CourseCatalogDTO> createCatalog(@Valid @RequestBody CourseCatalogDTO catalog) { // ✨ 修改：接收DTO
         return ApiResult.success(courseService.createCatalog(catalog));
     }
 
-    // --- 课程安排接口 ---
+    // ✨ 新增：更新课程目录接口
+    @PutMapping("/course-catalogs/{id}")
+    public ApiResult<CourseCatalogDTO> updateCatalog(@PathVariable Long id, @Valid @RequestBody CourseCatalogDTO catalog) {
+        return ApiResult.success(courseService.updateCatalog(id, catalog));
+    }
+
+    // ✨ 新增：删除课程目录接口
+    @DeleteMapping("/course-catalogs/{id}")
+    public ApiResult<?> deleteCatalog(@PathVariable Long id) {
+        courseService.deleteCatalog(id);
+        return ApiResult.success();
+    }
+
+    // --- 课程安排接口 (保持不变) ---
     @GetMapping("/course-offerings")
     public ApiResult<List<CourseOffering>> getAllOfferings() {
         return ApiResult.success(courseService.getAllOfferings());

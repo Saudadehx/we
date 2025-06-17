@@ -9,29 +9,37 @@
           <div class="time-slot-id">第 {{ timeSlot.id }} 节</div>
           <div class="time-range">{{ timeSlot.range }}</div>
         </div>
-        <div v-for="dayIndex in 7" :key="`<span class="math-inline">\{timeSlot\.id\}\-</span>{dayIndex}`" class="class-cell" @click="onCellClick(dayIndex, timeSlot.id)">
-        <div v-for="course in getCoursesAt(dayIndex, timeSlot.id)" :key="course.id" class="course-item" :style="{ backgroundColor: getCourseColor(course.majorId) }" @click.stop="onCourseClick(course)">
-          <div class="course-details">
-            <strong>{{ course.courseName }}</strong>
-            <span>{{ course.teacherName }}</span>
-            <span class="major-name" v-if="course.majorName"> ({{ course.majorName }})</span>
+
+        <div v-for="dayIndex in 7" :key="`${timeSlot.id}-${dayIndex}`" class="class-cell" @click="onCellClick(dayIndex, timeSlot.id)">
+          <div v-for="offering in getOfferingsAt(dayIndex, timeSlot.id)" :key="offering.id" class="course-item" :style="{ backgroundColor: getOfferingColor(offering) }" @click.stop="onOfferingClick(offering)">
+            <div class="course-details">
+              <strong>{{ offering.courseName }}</strong>
+              <span>{{ offering.teacherName }}</span>
+              <div class="major-tags-container" v-if="offering.associatedMajors && offering.associatedMajors.length > 0">
+                <span v-for="majorInfo in offering.associatedMajors" :key="majorInfo.majorId" class="major-tag">
+                  {{ majorInfo.majorName }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+
+      </template>
     </div>
-</template>
-</div>
-</div>
+  </div>
 </template>
 
 <script setup>
+// <script setup> 部分的代码与上一个回复中的版本保持一致，此处不再重复。
+// 重要的是，getOfferingsAt 方法返回的是一个数组，这正是我们需要的。
 import { computed } from 'vue';
 
 const props = defineProps({
-  schedules: { type: Array, default: () => [] },
+  offerings: { type: Array, default: () => [] },
   majors: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(['cell-click', 'course-click']);
+const emit = defineEmits(['cell-click', 'offering-click']);
 
 const days = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
 const timeSlots = [
@@ -51,50 +59,96 @@ const majorColors = computed(() => {
   return colorMap;
 });
 
-const getCourseColor = (majorId) => {
-  return majorColors.value.get(majorId) || '#e9ecef';
+const getOfferingColor = (offering) => {
+  if (offering.associatedMajors && offering.associatedMajors.length > 0) {
+    const primaryMajorId = offering.associatedMajors[0].majorId;
+    return majorColors.value.get(primaryMajorId) || '#e9ecef';
+  }
+  return '#e9ecef';
 };
 
 const scheduleMap = computed(() => {
   const map = new Map();
-  props.schedules.forEach(schedule => {
-    if (schedule.courseDay && schedule.courseTime) {
-      const key = `<span class="math-inline">\{schedule\.courseDay\}\-</span>{schedule.courseTime}`;
+  props.offerings.forEach(offering => {
+    if (offering.courseDay && offering.courseTime) {
+      const key = `${offering.courseDay}-${offering.courseTime}`;
       if (!map.has(key)) {
         map.set(key, []);
       }
-      map.get(key).push(schedule);
+      map.get(key).push(offering);
     }
   });
   return map;
 });
 
-const getCoursesAt = (day, time) => {
-  const key = `<span class="math-inline">\{day\}\-</span>{time}`;
-  return scheduleMap.value.get(key) || [];
+const getOfferingsAt = (day, time) => {
+  return scheduleMap.value.get(`${day}-${time}`) || [];
 };
 
 const onCellClick = (day, time) => {
   emit('cell-click', { day, time });
 };
 
-const onCourseClick = (course) => {
-  emit('course-click', course);
+const onOfferingClick = (offering) => {
+  emit('offering-click', offering);
 };
 </script>
 
 <style scoped>
-.schedule-grid-container { padding: 0; overflow-x: auto; }
-.timetable { display: grid; grid-template-columns: 100px repeat(7, minmax(140px, 1fr)); gap: 2px; background-color: var(--color-border); border: 1px solid var(--color-border); border-radius: var(--border-radius); overflow: hidden; min-width: 900px; }
-.header-cell, .class-cell { background-color: #fff; padding: 8px; min-height: 90px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-.header-cell { background-color: #f8f9fa; font-weight: 600; }
-.class-cell { cursor: pointer; transition: background-color 0.2s; }
-.class-cell:hover { background-color: #f1f3f5; }
+.timetable {
+  display: grid;
+  grid-template-columns: 100px repeat(7, minmax(150px, 1fr)); /* 增加最小宽度保证内容显示 */
+  gap: 2px;
+  background-color: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  min-width: 1200px; /* 保证在小屏幕下可滚动 */
+}
+
+/* ✨ 修改：这是关键的样式改变 */
+.class-cell {
+  background-color: #fff;
+  padding: 4px; /* 减小内边距，为课程块留出空间 */
+  min-height: 100px; /* 增加最小高度 */
+  display: flex;
+  flex-direction: column; /* 让内部的课程块纵向排列 */
+  gap: 4px; /* 课程块之间的间距 */
+  align-items: stretch;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.class-cell:hover {
+  background-color: #f1f3f5;
+}
+
+.course-item {
+  width: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  color: #333;
+  cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.1);
+  text-align: left;
+}
+/* 其他样式(.header-cell, .time-header, .course-details, .major-tag 等)保持不变 */
+.header-cell {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
 .time-header { justify-content: space-around; }
 .time-slot-id { font-size: 1.1em; font-weight: 700; color: var(--color-primary); }
 .time-range { font-size: 0.8em; color: var(--color-text-secondary); }
-.course-item { width: 100%; padding: 6px; box-sizing: border-box; border-radius: 6px; color: #333; margin-top: 2px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); }
-.course-details strong { display: block; font-size: 0.9em; }
+.course-details { display: flex; flex-direction: column; gap: 4px; }
+.course-details strong { display: block; font-size: 0.9em; font-weight: 600; }
 .course-details span { font-size: 0.8em; color: #555; }
-.major-name { font-style: italic; }
+.major-tags-container { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.major-tag { background-color: rgba(0, 0, 0, 0.05); padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-style: italic; white-space: nowrap; }
 </style>

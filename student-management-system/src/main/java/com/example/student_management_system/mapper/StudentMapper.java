@@ -2,6 +2,7 @@ package com.example.student_management_system.mapper;
 
 import com.example.student_management_system.model.Student;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import java.util.List;
 import java.util.Map; // 导入 Map
 
@@ -15,4 +16,5 @@ public interface StudentMapper {
     void insert(Student student);
     int update(Student student);
     void deleteById(Long id);
+    List<Student> findByMajorAndAcademicInfo(@Param("majorId") Long majorId, @Param("academicYear") Integer academicYear, @Param("semester") Integer semester);
 }

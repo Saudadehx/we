@@ -13,6 +13,7 @@ public interface CourseOfferingMapper {
     List<CourseOffering> findOfferingsByTeacherId(@Param("teacherId") Long teacherId);
     void insert(CourseOffering offering);
     int update(CourseOffering offering);
+    int countByCourseCatalogId(@Param("courseCatalogId") Long courseCatalogId);
     void deleteById(Long id);
     List<CourseOffering> findOfferingsByTeacherAndTimetable(
             @Param("teacherId") Long teacherId,

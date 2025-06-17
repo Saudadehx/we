@@ -5,7 +5,7 @@
     <resultMap id="EnrollmentResultMap" type="com.example.student_management_system.model.Enrollment">
         <id property="id" column="id"/>
         <result property="studentId" column="student_id"/>
-        <result property="courseId" column="course_id"/>
+        <result property="courseOfferingId" column="course_offering_id"/>
         <result property="score" column="score"/>
     </resultMap>
 
@@ -18,8 +18,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.Enrollment">
-        INSERT INTO enrollments(student_id, course_id, score)
-        VALUES(#{studentId}, #{courseId}, #{score})
+        INSERT INTO enrollments(student_id, course_offering_id, score)
+        VALUES(#{studentId}, #{courseOfferingId}, #{score})
     </insert>
 
     <update id="updateScore">
@@ -31,7 +31,7 @@
     </delete>
 
     <select id="findById" parameterType="long" resultMap="EnrollmentResultMap">
-        SELECT id, student_id, course_id, score FROM enrollments WHERE id = #{id}
+        SELECT id, student_id, course_offering_id, score FROM enrollments WHERE id = #{id}
     </select>
 
 </mapper>

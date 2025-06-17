@@ -64,24 +64,32 @@ export const majorService = {
 };
 
 export const courseService = {
-    // 管理基础课程
-    getAll: (params = {}) => apiClient.get('/courses', { params }),
-    create: (courseData) => apiClient.post('/courses', courseData),
-    update: (id, courseData) => apiClient.put(`/courses/${id}`, courseData),
-    delete: (id) => apiClient.delete(`/courses/${id}`),
-    // 管理课程安排
-    getAllSchedules: (params = {}) => apiClient.get('/course-schedules', { params }),
-    createSchedule: (scheduleData) => apiClient.post('/course-schedules', scheduleData),
-    updateSchedule: (id, scheduleData) => apiClient.put(`/course-schedules/${id}`, scheduleData),
-    deleteSchedule: (id) => apiClient.delete(`/course-schedules/${id}`),
+    // 课程目录 (Catalog)
+    getAllCatalogs: () => apiClient.get('/course-catalogs'),
+    createCatalog: (catalogData) => apiClient.post('/course-catalogs', catalogData),
+    // ✨ 新增
+    updateCatalog: (id, catalogData) => apiClient.put(`/course-catalogs/${id}`, catalogData),
+    deleteCatalog: (id) => apiClient.delete(`/course-catalogs/${id}`),
+
+    // 课程安排 (Offering)
+    getAllOfferings: () => apiClient.get('/course-offerings'),
+    createOffering: (offeringData) => apiClient.post('/course-offerings', offeringData),
+    updateOffering: (id, offeringData) => apiClient.put(`/course-offerings/${id}`, offeringData),
+    deleteOffering: (id) => apiClient.delete(`/course-offerings/${id}`),
 };
 
 export const enrollmentService = {
-    getForCourse: (courseId) => apiClient.get(`/teachers/me/courses/${courseId}/enrollments`),
+    // 教师用API, URL中的courseId现在是offeringId
+    getForCourse: (offeringId) => apiClient.get(`/teachers/me/courses/${offeringId}/enrollments`),
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
-    enrollInCourse: (courseId) => apiClient.post('/students/me/enrollments', { courseId }),
+
+    // 学生用API, URL中的courseId现在是offeringId
+    enrollInCourse: (offeringId) => apiClient.post('/students/me/enrollments', { courseId: offeringId }),
     dropCourse: (enrollmentId) => apiClient.delete(`/students/me/enrollments/${enrollmentId}`),
-    getAvailableCourses: () => apiClient.get('/students/me/available-courses'),
+    getAvailableOfferings: () => apiClient.get('/students/me/available-courses'), // 后端返回 List<CourseOffering>
+
+    // 管理员用API
+    createEnrollment: (data) => apiClient.post('/enrollments', data),
 };
 
 export const studentService = {

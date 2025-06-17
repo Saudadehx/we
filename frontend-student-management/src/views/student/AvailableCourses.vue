@@ -7,17 +7,13 @@
     </header>
 
     <div v-if="isLoading" class="loading-indicator">正在加载...</div>
-
     <div v-else-if="!isSelectionOpen" class="content-card closed-notice">
-      <div class="notice-icon">&#128711;</div>
       <h2>选课通道已关闭</h2>
-      <p>当前不是选课或退课时间，请您关注教务通知，在规定时间内进行操作。</p>
-      <router-link to="/student/schedule" class="action-btn">查看我的课表</router-link>
+      <p>请关注学校通知，在指定时间内进行选课操作。</p>
     </div>
-
     <div v-else>
       <div class="content-card">
-        <table class="data-table available-cours-table">
+        <table class="data-table available-courses-table">
           <thead>
           <tr>
             <th>课程编号</th>
@@ -30,41 +26,37 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="courseCatalog in availableCourses" :key="courseCatalog.id" class="table-row">
-            <td>{{ courseCatalog.courseId }}</td>
-            <td>{{ courseCatalog.courseName }}</td>
+          <tr v-for="offering in availableOfferings" :key="offering.id" class="table-row">
+            <td>{{ offering.courseCode }}</td>
+            <td>{{ offering.courseName }}</td>
             <td>
-                <span class="courseCatalog-type" :class="courseCatalog.courseType.toLowerCase()">
-                    {{ courseCatalog.courseType === 'COMPULSORY' ? '必修' : '选修' }}
+                <span class="course-type" :class="getCourseTypeForStudent(offering).toLowerCase()">
+                  {{ formatCourseType(getCourseTypeForStudent(offering)) }}
                 </span>
             </td>
-            <td>{{ courseCatalog.credits }}</td>
-            <td>{{ courseCatalog.teacherName }}</td>
-            <td>{{ formatCourseTime(courseCatalog.courseDay, courseCatalog.courseTime) }}</td>
+            <td>{{ offering.credits }}</td>
+            <td>{{ offering.teacherName || '待定' }}</td>
+            <td>{{ formatCourseTime(offering.courseDay, offering.courseTime) }}</td>
             <td class="action-col">
-              <template v-if="isEnrolled(courseCatalog.id)">
-                  <span v-if="isCompulsory(courseCatalog.id) || hasGrade(courseCatalog.id)" class="status-tag non-withdrawable-tag">
-                      不可退
+              <template v-if="isEnrolled(offering.id)">
+                  <span v-if="isCompulsory(offering) || hasGrade(offering.id)" class="status-tag non-withdrawable-tag">
+                    不可退
                   </span>
-                <button v-else @click="handleWithdraw(getEnrollmentId(courseCatalog.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
+                <button v-else @click="handleWithdraw(getEnrollmentId(offering.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
                   退课
                 </button>
               </template>
               <template v-else>
-                <button
-                    @click="handleEnroll(courseCatalog.id)"
-                    class="action-btn enroll-btn"
-                    :disabled="isEnrolling || hasConflict(courseCatalog) || isCompulsory(courseCatalog.id)"
-                >
-                  <span v-if="isCompulsory(courseCatalog.id)">系统预置</span>
-                  <span v-else-if="hasConflict(courseCatalog)">时间冲突</span>
+                <button @click="handleEnroll(offering.id)" class="action-btn enroll-btn" :disabled="isEnrolling || hasConflict(offering) || isCompulsory(offering)">
+                  <span v-if="isCompulsory(offering)">系统预置</span>
+                  <span v-else-if="hasConflict(offering)">时间冲突</span>
                   <span v-else>选课</span>
                 </button>
               </template>
             </td>
           </tr>
-          <tr v-if="availableCourses.length === 0">
-            <td colspan="7" class="no-data-cell">未找到符合条件的课程。</td>
+          <tr v-if="availableOfferings.length === 0">
+            <td colspan="7" class="no-data-cell">当前学期未找到符合条件的课程。</td>
           </tr>
           </tbody>
         </table>
@@ -75,34 +67,37 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+// ✨ 修正：从正确的来源导入各自的服务
 import { enrollmentService, studentService } from '@/services/apiService';
 import { apiService as systemSettingApiService } from '@/services/systemSettingService';
 import { showNotification } from '@/services/notificationStore';
 
-const availableCourses = ref([]);
+const authStore = useAuthStore();
+const availableOfferings = ref([]);
 const myEnrollments = ref([]);
 const isLoading = ref(true);
 const isEnrolling = ref(false);
 const isWithdrawing = ref(false);
 const isSelectionOpen = ref(false);
+const studentProfile = ref(null);
 
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    // 步骤 1: 首先获取选课通道状态
     const statusRes = await systemSettingApiService.getCourseSelectionStatus();
     isSelectionOpen.value = statusRes.isOpen;
 
-    // 步骤 2: 仅当通道开启时，才获取课程数据
     if (isSelectionOpen.value) {
-      const [coursesRes, enrollmentsRes] = await Promise.all([
-        enrollmentService.getAvailableCourses(),
-        studentService.getMyCoursesAndGrades()
+      const [offeringsRes, enrollmentsRes, profileRes] = await Promise.all([
+        enrollmentService.getAvailableOfferings(),
+        studentService.getMyCoursesAndGrades(),
+        studentService.getMyProfile()
       ]);
-      availableCourses.value = coursesRes;
+      availableOfferings.value = offeringsRes;
       myEnrollments.value = enrollmentsRes;
+      studentProfile.value = profileRes;
     }
-    // 如果通道关闭，则不执行任何额外的数据获取
   } catch (error) {
     showNotification(error.message || '数据加载失败', 'error');
   } finally {
@@ -112,49 +107,54 @@ const fetchData = async () => {
 
 onMounted(fetchData);
 
-const myCourseMap = ref(new Map());
-watch(availableCourses, (newCourses) => {
+const mySchedule = computed(() => {
+  const scheduleSet = new Set();
+  myEnrollments.value.forEach(enrollment => {
+    if (enrollment.courseDay && enrollment.courseTime) {
+      scheduleSet.add(`${enrollment.courseDay}-${enrollment.courseTime}`);
+    }
+  });
+  return scheduleSet;
+});
+
+const enrolledOfferingIds = computed(() => new Set(myEnrollments.value.map(e => e.courseOfferingId)));
+
+const enrollmentMap = computed(() => {
   const map = new Map();
-  newCourses.forEach(c => map.set(c.id, c));
-  myCourseMap.value = map;
-}, { deep: true });
+  myEnrollments.value.forEach(e => map.set(e.courseOfferingId, e));
+  return map;
+});
 
-const mySchedule = computed(() => new Set(myEnrollments.value.filter(e => e.courseDay && e.courseTime).map(e => `${e.courseDay}-${e.courseTime}`)));
 
-const isEnrolled = (courseDbId) => {
-  const courseCatalog = myCourseMap.value.get(courseDbId);
-  if (!courseCatalog) return false;
-  return myEnrollments.value.some(e => e.courseId === courseCatalog.courseId);
-};
+const isEnrolled = (offeringId) => enrolledOfferingIds.value.has(offeringId);
 
-const getEnrollmentId = (courseDbId) => {
-  const courseCatalog = myCourseMap.value.get(courseDbId);
-  if (!courseCatalog) return null;
-  return myEnrollments.value.find(e => e.courseId === courseCatalog.courseId)?.enrollmentId;
-};
+const getEnrollmentId = (offeringId) => enrollmentMap.value.get(offeringId)?.enrollmentId;
 
-const hasGrade = (courseDbId) => {
-  const courseCatalog = myCourseMap.value.get(courseDbId);
-  if (!courseCatalog) return false;
-  const enrollment = myEnrollments.value.find(e => e.courseId === courseCatalog.courseId);
+const hasGrade = (offeringId) => {
+  const enrollment = enrollmentMap.value.get(offeringId);
   return enrollment && enrollment.score !== null;
 };
 
-const isCompulsory = (courseDbId) => {
-  const courseCatalog = myCourseMap.value.get(courseDbId);
-  return courseCatalog && courseCatalog.courseType === 'COMPULSORY';
+const getCourseTypeForStudent = (offering) => {
+  if (!studentProfile.value || !offering.associatedMajors) return 'ELECTIVE';
+  const studentMajorId = studentProfile.value.majorId;
+  const association = offering.associatedMajors.find(m => m.majorId === studentMajorId);
+  return association ? association.courseType : 'ELECTIVE';
 };
 
-const hasConflict = (courseCatalog) => {
-  if (isEnrolled(courseCatalog.id)) return false;
-  if (!courseCatalog.courseDay || !courseCatalog.courseTime) return false;
-  return mySchedule.value.has(`${courseCatalog.courseDay}-${courseCatalog.courseTime}`);
+const isCompulsory = (offering) => getCourseTypeForStudent(offering) === 'COMPULSORY';
+
+const hasConflict = (offering) => {
+  if (!offering.courseDay || !offering.courseTime) return false;
+  // 如果已选这门课，不算时间冲突
+  if(isEnrolled(offering.id)) return false;
+  return mySchedule.value.has(`${offering.courseDay}-${offering.courseTime}`);
 };
 
-const handleEnroll = async (courseDbId) => {
+const handleEnroll = async (offeringId) => {
   isEnrolling.value = true;
   try {
-    await enrollmentService.enrollInCourse(courseDbId);
+    await enrollmentService.enrollInCourse(offeringId);
     showNotification('选课成功！', 'success');
     await fetchData();
   } catch (error) {
@@ -184,22 +184,28 @@ const formatCourseTime = (day, time) => {
   const timeStr = `第 ${time} 大节`;
   return `${dayStr} ${timeStr}`;
 };
+
+const formatCourseType = (type) => {
+  if (type === 'COMPULSORY') return '专业必修';
+  return '专业选修';
+}
 </script>
 
 <style scoped>
+/* 样式与之前保持一致，此处省略 */
 @import '@/assets/styles/common-page.css';
 
-.courseCatalog-type {
+.course-type {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.85em;
   font-weight: 600;
   color: white;
 }
-.courseCatalog-type.compulsory {
+.course-type.compulsory {
   background-color: var(--color-danger);
 }
-.courseCatalog-type.elective {
+.course-type.elective {
   background-color: var(--color-success);
 }
 .status-tag {
@@ -247,10 +253,6 @@ const formatCourseTime = (day, time) => {
   text-align: center;
   padding: 40px;
 }
-.closed-notice .notice-icon {
-  font-size: 48px;
-  color: var(--color-warning);
-}
 .closed-notice h2 {
   margin: 16px 0;
 }
@@ -258,10 +260,5 @@ const formatCourseTime = (day, time) => {
   color: var(--color-text-secondary);
   max-width: 400px;
   margin: 0 auto 24px auto;
-}
-.closed-notice .action-btn {
-  background-color: var(--color-primary);
-  color: white;
-  text-decoration: none;
 }
 </style>

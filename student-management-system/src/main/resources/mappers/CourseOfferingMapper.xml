@@ -132,5 +132,8 @@
                  LEFT JOIN majors m ON oml.major_id = m.id
         WHERE co.teacher_id = #{teacherId}
     </select>
+    <select id="countByCourseCatalogId" parameterType="long" resultType="int">
+        SELECT COUNT(*) FROM course_offerings WHERE course_catalog_id = #{courseCatalogId}
+    </select>
 
 </mapper>

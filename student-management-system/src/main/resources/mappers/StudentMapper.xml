@@ -93,4 +93,11 @@
     <delete id="deleteById" parameterType="long">
         DELETE FROM students WHERE id = #{id}
     </delete>
+    <select id="findByMajorAndAcademicInfo" resultMap="StudentResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM students
+        WHERE major_id = #{majorId}
+        AND academic_year = #{academicYear}
+        AND semester = #{semester}
+    </select>
 </mapper>
