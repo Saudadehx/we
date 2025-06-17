@@ -2,28 +2,43 @@
   <div class="page-container">
     <header class="page-header">
       <h1>我的课程</h1>
-      <p>点击下方的课程卡片，为学生录入成绩。</p>
+      <p>选择一门课程，为学生录入成绩。</p>
     </header>
 
     <div v-if="isLoading" class="loading-indicator">正在加载您的课程数据...</div>
 
-    <div v-else class="courseCatalog-grid">
-      <div v-for="courseCatalog in courses" :key="courseCatalog.id" class="courseCatalog-card" @click="goToGradeEntry(courseCatalog.id)">
-        <div class="card-header">
-          <span class="card-icon">&#128218;</span>
-          <h3>{{ courseCatalog.courseName }}</h3>
-        </div>
-        <div class="card-body">
-          <p><strong>课程编号:</strong> {{ courseCatalog.courseId }}</p>
-          <p><strong>学分:</strong> {{ courseCatalog.credits }}</p>
-        </div>
-        <div class="card-footer">
-          <span>进入成绩录入</span>
-        </div>
-      </div>
-      <div v-if="courses.length === 0 && !isLoading" class="no-data">
-        <p>系统暂未给您分配任何课程。</p>
-      </div>
+    <div v-else class="content-card">
+      <table class="data-table teacher-course-table">
+        <thead>
+        <tr>
+          <th>课程编号</th>
+          <th>课程名称</th>
+          <th>学分</th>
+          <th>学年</th>
+          <th>学期</th>
+          <th style="text-align: right;">操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-if="courses.length === 0 && !isLoading">
+          <td colspan="6" class="no-data">
+            <p>系统暂未给您分配任何课程。</p>
+          </td>
+        </tr>
+        <tr v-for="course in courses" :key="course.id" class="course-row">
+          <td>{{ course.courseCode }}</td>
+          <td>{{ course.courseName }}</td>
+          <td>{{ course.credits }}</td>
+          <td>{{ course.academicYear }} - {{ course.academicYear + 1 }}</td>
+          <td>第 {{ course.semester }} 学期</td>
+          <td style="text-align: right;">
+            <button @click="goToGradeEntry(course.id)" class="action-btn grade-entry-btn">
+              进入成绩录入
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
@@ -41,8 +56,6 @@ const router = useRouter();
 const fetchMyCourses = async () => {
   isLoading.value = true;
   try {
-    // 后端需要一个能返回当前登录教师所授课程的API
-    // 我们在 service 中假设这个 API 是 teacherService.getMyCourses()
     courses.value = await teacherService.getMyCourses();
   } catch (error) {
     showNotification(error.message || '获取课程列表失败', 'error');
@@ -51,9 +64,8 @@ const fetchMyCourses = async () => {
   }
 };
 
-// 点击课程卡片，跳转到对应的成绩录入页面
-const goToGradeEntry = (courseId) => {
-  router.push({ name: 'GradeEntry', params: { id: courseId } });
+const goToGradeEntry = (courseOfferingId) => {
+  router.push({ name: 'GradeEntry', params: { id: courseOfferingId } });
 };
 
 onMounted(fetchMyCourses);
@@ -69,66 +81,26 @@ onMounted(fetchMyCourses);
   color: var(--color-text-secondary);
 }
 
-.courseCatalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+.teacher-course-table .course-row {
+  transition: background-color 0.2s ease;
 }
 
-.courseCatalog-card {
-  background-color: #fff;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* 保证子元素圆角 */
-}
-
-.courseCatalog-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.teacher-course-table .course-row:hover {
   background-color: var(--color-primary-light);
-  padding: 16px;
 }
 
-.card-icon {
-  font-size: 1.5em;
-  color: var(--color-primary);
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 1.2em;
-  color: var(--color-text-primary);
-}
-
-.card-body {
-  padding: 16px;
-  flex-grow: 1;
-}
-
-.card-body p {
-  margin: 0 0 8px 0;
-  color: var(--color-text-secondary);
-}
-.card-body p strong {
-  color: var(--color-text-primary);
-}
-
-.card-footer {
-  text-align: center;
-  padding: 12px;
-  background-color: #f8f9fa;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-primary);
+.grade-entry-btn {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
   font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.grade-entry-btn:hover {
+  opacity: 0.9;
 }
 </style>

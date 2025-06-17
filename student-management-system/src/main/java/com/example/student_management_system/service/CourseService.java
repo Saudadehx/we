@@ -1,16 +1,19 @@
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.CourseCatalogDTO;
+import com.example.student_management_system.event.CourseOfferingUpdatedEvent;
 import com.example.student_management_system.mapper.*;
 import com.example.student_management_system.model.*;
-import com.example.student_management_system.event.CourseOfferingUpdatedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,13 +31,13 @@ public class CourseService {
     @Autowired
     public CourseService(CourseCatalogMapper courseCatalogMapper, CourseOfferingMapper courseOfferingMapper,
                          OfferingMajorLinkMapper offeringMajorLinkMapper, TeacherMapper teacherMapper, MajorMapper majorMapper,
-                         ApplicationEventPublisher eventPublisher) { // ✨ 修改构造函数
+                         ApplicationEventPublisher eventPublisher) {
         this.courseCatalogMapper = courseCatalogMapper;
         this.courseOfferingMapper = courseOfferingMapper;
         this.offeringMajorLinkMapper = offeringMajorLinkMapper;
         this.teacherMapper = teacherMapper;
         this.majorMapper = majorMapper;
-        this.eventPublisher = eventPublisher; // ✨ 新增
+        this.eventPublisher = eventPublisher;
     }
 
     private CourseCatalogDTO convertToDto(CourseCatalog entity) {
@@ -106,9 +109,52 @@ public class CourseService {
 
 
     // --- 课程安排管理 ---
-    public List<CourseOffering> getAllOfferings() {
-        return courseOfferingMapper.findAllWithDetails();
+
+    private List<CourseOffering> deduplicateAndMergeOfferings(List<CourseOffering> rawList) {
+        if (rawList == null || rawList.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 使用课程安排的ID作为key，将列表转换为Map，这会自动处理ID重复的情况
+        Map<Long, CourseOffering> offeringsMap = rawList.stream()
+                .collect(Collectors.toMap(
+                        CourseOffering::getId,       // Map的key
+                        Function.identity(),         // Map的value
+                        (existingOffering, newOffering) -> { // 合并函数：当key冲突时执行
+                            // 如果已存在的对象没有专业列表，则初始化
+                            if (existingOffering.getAssociatedMajors() == null) {
+                                existingOffering.setAssociatedMajors(new ArrayList<>());
+                            }
+                            // 将新对象中的专业信息合并到已存在的对象中
+                            if (newOffering.getAssociatedMajors() != null) {
+                                existingOffering.getAssociatedMajors().addAll(newOffering.getAssociatedMajors());
+                            }
+                            // 对合并后的专业列表也进行去重，防止意外加入重复专业
+                            if (existingOffering.getAssociatedMajors() != null) {
+                                existingOffering.setAssociatedMajors(
+                                        existingOffering.getAssociatedMajors().stream()
+                                                .distinct() // MajorInfo需要有正确的equals/hashCode（@Data已提供）
+                                                .collect(Collectors.toList())
+                                );
+                            }
+                            return existingOffering; // 返回合并后的对象
+                        }
+                ));
+
+        return new ArrayList<>(offeringsMap.values());
     }
+
+    public List<CourseOffering> getAllOfferings() {
+        List<CourseOffering> rawList = courseOfferingMapper.findAllWithDetails();
+        return deduplicateAndMergeOfferings(rawList);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourseOffering> findOfferingsByTeacherId(Long teacherId) {
+        List<CourseOffering> rawList = courseOfferingMapper.findOfferingsByTeacherId(teacherId);
+        return deduplicateAndMergeOfferings(rawList);
+    }
+
 
     public CourseOffering createOffering(CourseOffering offering) {
         checkForConflicts(offering);
@@ -183,10 +229,5 @@ public class CourseService {
                 }
             }
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<CourseOffering> findOfferingsByTeacherId(Long teacherId) {
-        return courseOfferingMapper.findOfferingsByTeacherId(teacherId);
     }
 }
