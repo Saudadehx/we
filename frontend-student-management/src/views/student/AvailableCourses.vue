@@ -7,17 +7,11 @@
     </header>
 
     <div v-if="isLoading" class="loading-indicator">正在加载...</div>
-
     <div v-else-if="!isSelectionOpen" class="content-card closed-notice">
-      <div class="notice-icon">&#128711;</div>
-      <h2>选课通道已关闭</h2>
-      <p>当前不是选课或退课时间，请您关注教务通知，在规定时间内进行操作。</p>
-      <router-link to="/student/schedule" class="action-btn">查看我的课表</router-link>
     </div>
-
     <div v-else>
       <div class="content-card">
-        <table class="data-table available-cours-table">
+        <table class="data-table available-courses-table">
           <thead>
           <tr>
             <th>课程编号</th>
@@ -30,41 +24,37 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="courseCatalog in availableCourses" :key="courseCatalog.id" class="table-row">
-            <td>{{ courseCatalog.courseId }}</td>
-            <td>{{ courseCatalog.courseName }}</td>
+          <tr v-for="offering in availableOfferings" :key="offering.id" class="table-row">
+            <td>{{ offering.courseCode }}</td>
+            <td>{{ offering.courseName }}</td>
             <td>
-                <span class="courseCatalog-type" :class="courseCatalog.courseType.toLowerCase()">
-                    {{ courseCatalog.courseType === 'COMPULSORY' ? '必修' : '选修' }}
+                <span class="course-type" :class="getCourseTypeForStudent(offering).toLowerCase()">
+                  {{ formatCourseType(getCourseTypeForStudent(offering)) }}
                 </span>
             </td>
-            <td>{{ courseCatalog.credits }}</td>
-            <td>{{ courseCatalog.teacherName }}</td>
-            <td>{{ formatCourseTime(courseCatalog.courseDay, courseCatalog.courseTime) }}</td>
+            <td>{{ offering.credits }}</td>
+            <td>{{ offering.teacherName }}</td>
+            <td>{{ formatCourseTime(offering.courseDay, offering.courseTime) }}</td>
             <td class="action-col">
-              <template v-if="isEnrolled(courseCatalog.id)">
-                  <span v-if="isCompulsory(courseCatalog.id) || hasGrade(courseCatalog.id)" class="status-tag non-withdrawable-tag">
-                      不可退
+              <template v-if="isEnrolled(offering.id)">
+                  <span v-if="isCompulsory(offering) || hasGrade(offering.id)" class="status-tag non-withdrawable-tag">
+                    不可退
                   </span>
-                <button v-else @click="handleWithdraw(getEnrollmentId(courseCatalog.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
+                <button v-else @click="handleWithdraw(getEnrollmentId(offering.id))" class="action-btn withdraw-btn" :disabled="isWithdrawing">
                   退课
                 </button>
               </template>
               <template v-else>
-                <button
-                    @click="handleEnroll(courseCatalog.id)"
-                    class="action-btn enroll-btn"
-                    :disabled="isEnrolling || hasConflict(courseCatalog) || isCompulsory(courseCatalog.id)"
-                >
-                  <span v-if="isCompulsory(courseCatalog.id)">系统预置</span>
-                  <span v-else-if="hasConflict(courseCatalog)">时间冲突</span>
+                <button @click="handleEnroll(offering.id)" class="action-btn enroll-btn" :disabled="isEnrolling || hasConflict(offering) || isCompulsory(offering)">
+                  <span v-if="isCompulsory(offering)">系统预置</span>
+                  <span v-else-if="hasConflict(offering)">时间冲突</span>
                   <span v-else>选课</span>
                 </button>
               </template>
             </td>
           </tr>
-          <tr v-if="availableCourses.length === 0">
-            <td colspan="7" class="no-data-cell">未找到符合条件的课程。</td>
+          <tr v-if="availableOfferings.length === 0">
+            <td colspan="7" class="no-data-cell">当前学期未找到符合条件的课程。</td>
           </tr>
           </tbody>
         </table>
@@ -74,35 +64,37 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useAuthStore } from '@/stores/auth'; // 用于获取学生专业信息
 import { enrollmentService, studentService } from '@/services/apiService';
 import { apiService as systemSettingApiService } from '@/services/systemSettingService';
 import { showNotification } from '@/services/notificationStore';
 
-const availableCourses = ref([]);
+const authStore = useAuthStore();
+const availableOfferings = ref([]);
 const myEnrollments = ref([]);
 const isLoading = ref(true);
 const isEnrolling = ref(false);
 const isWithdrawing = ref(false);
 const isSelectionOpen = ref(false);
+const studentProfile = ref(null);
 
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    // 步骤 1: 首先获取选课通道状态
     const statusRes = await systemSettingApiService.getCourseSelectionStatus();
     isSelectionOpen.value = statusRes.isOpen;
 
-    // 步骤 2: 仅当通道开启时，才获取课程数据
     if (isSelectionOpen.value) {
-      const [coursesRes, enrollmentsRes] = await Promise.all([
-        enrollmentService.getAvailableCourses(),
-        studentService.getMyCoursesAndGrades()
+      const [offeringsRes, enrollmentsRes, profileRes] = await Promise.all([
+        enrollmentService.getAvailableOfferings(),
+        studentService.getMyCoursesAndGrades(),
+        studentService.getMyProfile() // 获取学生个人信息，特别是majorId
       ]);
-      availableCourses.value = coursesRes;
+      availableOfferings.value = offeringsRes;
       myEnrollments.value = enrollmentsRes;
+      studentProfile.value = profileRes;
     }
-    // 如果通道关闭，则不执行任何额外的数据获取
   } catch (error) {
     showNotification(error.message || '数据加载失败', 'error');
   } finally {

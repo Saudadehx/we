@@ -16,7 +16,7 @@
         <router-link to="/dashboard/students" class="nav-item">
           <span class="nav-text">学生管理</span>
         </router-link>
-        <router-link to="/dashboard/cours" class="nav-item">
+        <router-link to="/dashboard/courses" class="nav-item">
           <span class="nav-text">课程管理</span>
         </router-link>
         <router-link to="/dashboard/majors" class="nav-item">
