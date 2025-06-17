@@ -3,9 +3,11 @@ package com.example.student_management_system.service;
 import com.example.student_management_system.dto.CourseCatalogDTO;
 import com.example.student_management_system.mapper.*;
 import com.example.student_management_system.model.*;
+import com.example.student_management_system.event.CourseOfferingUpdatedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -21,21 +23,18 @@ public class CourseService {
     private final OfferingMajorLinkMapper offeringMajorLinkMapper;
     private final TeacherMapper teacherMapper;
     private final MajorMapper majorMapper;
-    private final StudentMapper studentMapper;
-    private final EnrollmentService enrollmentService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public CourseService(CourseCatalogMapper courseCatalogMapper, CourseOfferingMapper courseOfferingMapper,
                          OfferingMajorLinkMapper offeringMajorLinkMapper, TeacherMapper teacherMapper, MajorMapper majorMapper,
-                         StudentMapper studentMapper, EnrollmentService enrollmentService) {
+                         ApplicationEventPublisher eventPublisher) { // ✨ 修改构造函数
         this.courseCatalogMapper = courseCatalogMapper;
         this.courseOfferingMapper = courseOfferingMapper;
         this.offeringMajorLinkMapper = offeringMajorLinkMapper;
         this.teacherMapper = teacherMapper;
         this.majorMapper = majorMapper;
-        // ✨ 新增：补上对 final 字段的初始化
-        this.studentMapper = studentMapper;
-        this.enrollmentService = enrollmentService;
+        this.eventPublisher = eventPublisher; // ✨ 新增
     }
 
     private CourseCatalogDTO convertToDto(CourseCatalog entity) {
@@ -125,8 +124,7 @@ public class CourseService {
             }
         }
 
-        assignOfferingToEligibleStudents(offering);
-
+        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, offering));
         return offering;
     }
 
@@ -150,41 +148,10 @@ public class CourseService {
             }
         }
 
-        assignOfferingToEligibleStudents(offering);
-
+        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, offering));
         return offering;
     }
 
-    private void assignOfferingToEligibleStudents(CourseOffering offering) {
-        // 如果课程没有关联的专业，或者没有时间和学年信息，则直接返回
-        if (offering.getAssociatedMajors() == null || offering.getAssociatedMajors().isEmpty() || offering.getAcademicYear() == null || offering.getSemester() == null) {
-            return;
-        }
-
-        offering.getAssociatedMajors().stream()
-                .filter(majorInfo -> "COMPULSORY".equals(majorInfo.getCourseType()))
-                .forEach(compulsoryMajor -> {
-                    List<Student> students = studentMapper.findByMajorAndAcademicInfo(
-                            compulsoryMajor.getMajorId(),
-                            offering.getAcademicYear(),
-                            offering.getSemester()
-                    );
-
-                    if (students.isEmpty()) {
-                        return;
-                    }
-
-                    log.info("正在为 {} 名学生分配必修课 '{}'...", students.size(), offering.getCourseName());
-
-                    students.forEach(student -> {
-                        try {
-                            enrollmentService.enrollCourseForStudentInternal(offering.getId(), student.getId());
-                        } catch (IllegalArgumentException e) {
-                            log.warn("为学生(ID:{})分配课程(ID:{})失败: {}", student.getId(), offering.getId(), e.getMessage());
-                        }
-                    });
-                });
-    }
 
     public void deleteOffering(Long offeringId) {
         courseOfferingMapper.deleteById(offeringId);

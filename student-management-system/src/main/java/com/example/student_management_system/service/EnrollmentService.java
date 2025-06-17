@@ -2,13 +2,19 @@ package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.EnrollmentDTO;
 import com.example.student_management_system.dto.EnrollmentResponseDTO;
+import com.example.student_management_system.event.CourseOfferingUpdatedEvent; // ✨ 新增
 import com.example.student_management_system.mapper.*;
 import com.example.student_management_system.model.*;
+import lombok.extern.slf4j.Slf4j; // ✨ 新增
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener; // ✨ 新增
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase; // ✨ 新增
+import org.springframework.transaction.event.TransactionalEventListener; // ✨ 新增
 import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
@@ -20,7 +26,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@Slf4j
 public class EnrollmentService {
 
     private final EnrollmentMapper enrollmentMapper;
@@ -37,10 +43,55 @@ public class EnrollmentService {
         this.offeringMajorLinkMapper = offeringMajorLinkMapper;
         this.systemSettingService = systemSettingService;
     }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void assignCourseInNewTransaction(Long offeringDbId, Long studentDbId) {
+        // 这个方法体就是为了在一个新事务中执行选课逻辑
+        this.enrollCourseForStudentInternal(offeringDbId, studentDbId);
+    }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleCourseOfferingUpdate(CourseOfferingUpdatedEvent event) {
+        CourseOffering offering = event.getCourseOffering();
+        log.info("接收到课程安排更新事件，ID: {}, 名称: '{}'。准备为符合条件的学生分配必修课。", offering.getId(), offering.getCourseName());
+
+        if (offering.getAssociatedMajors() == null || offering.getAssociatedMajors().isEmpty()) {
+            return;
+        }
+
+        offering.getAssociatedMajors().stream()
+                .filter(majorInfo -> "COMPULSORY".equals(majorInfo.getCourseType()))
+                .forEach(compulsoryMajor -> {
+                    List<Student> students = studentMapper.findByMajorAndAcademicInfo(
+                            compulsoryMajor.getMajorId(),
+                            offering.getAcademicYear(),
+                            offering.getSemester()
+                    );
+
+                    if (students.isEmpty()) {
+                        log.info("专业 '{}' 在 {}-{}学年/{}学期 没有找到需要分配此必修课的学生。",
+                                compulsoryMajor.getMajorName(), offering.getAcademicYear(), offering.getAcademicYear() + 1, offering.getSemester());
+                        return;
+                    }
+
+                    students.forEach(student -> {
+                        try {
+                            // ✨ 在独立的事务中为每个学生选课
+                            this.enrollCourseInNewTransaction(offering.getId(), student.getId());
+                        } catch (Exception e) {
+                            log.warn("为学生(ID:{})自动分配课程(ID:{})时发生错误: {}", student.getId(), offering.getId(), e.getMessage());
+                        }
+                    });
+                });
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void enrollCourseInNewTransaction(Long offeringDbId, Long studentDbId) {
+        this.enrollCourseForStudentInternal(offeringDbId, studentDbId);
+    }
     /**
      * 为单个学生自动分配其学年和学期对应的必修课
      */
+    @Transactional
     public void assignCompulsoryCoursesForStudent(Student student) {
         if (student == null || student.getId() == null || student.getMajorId() == null || student.getAcademicYear() == null || student.getSemester() == null) {
             return;
@@ -65,6 +116,7 @@ public class EnrollmentService {
     /**
      * 学生为自己选课
      */
+    @Transactional
     public Enrollment enrollCourseForStudent(Long offeringDbId, Long studentDbId) {
         if (!systemSettingService.isCourseSelectionOpen()) {
             throw new IllegalStateException("当前非选课时间，无法进行操作。");
@@ -85,6 +137,7 @@ public class EnrollmentService {
     /**
      * 学生退课
      */
+    @Transactional
     public void dropCourse(Long enrollmentId, Long studentId) {
         if (!systemSettingService.isCourseSelectionOpen()) {
             throw new IllegalStateException("当前非退课时间，无法进行操作。");
@@ -145,6 +198,7 @@ public class EnrollmentService {
     /**
      * 教师更新成绩
      */
+    @Transactional
     public void updateGrade(Long enrollmentId, Double score, Long teacherId) {
         Enrollment enrollment = enrollmentMapper.findById(enrollmentId);
         if (enrollment == null) {
@@ -206,6 +260,7 @@ public class EnrollmentService {
     /**
      * 管理员创建选课记录
      */
+    @Transactional
     public Enrollment createEnrollment(EnrollmentDTO enrollmentDTO) {
         Student student = studentMapper.findByStudentId(enrollmentDTO.getStudentId());
         if (student == null) {
