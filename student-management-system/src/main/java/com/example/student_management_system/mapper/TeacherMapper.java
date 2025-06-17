@@ -28,6 +28,13 @@ public interface TeacherMapper {
     Teacher findById(Long id);
 
     /**
+     * 根据多个数据库主键ID查找教师。
+     * @param ids 教师的数据库ID列表
+     * @return 找到的教师对象列表
+     */
+    List<Teacher> findByIds(List<Long> ids); // 新增方法
+
+    /**
      * 插入一个新的教师记录。
      * @param teacher 新的教师对象
      */

@@ -4,8 +4,10 @@
 :root {
   /* 色彩规范 */
   --color-primary: #337ab7; /* 主题色，用于按钮、链接、高亮等 */
+  --color-primary-rgb: 51, 122, 183; /* 【新增】主题色的RGB值，用于透明度控制 */
   --color-primary-light: #eaf2f8; /* 主题色的浅色，用于背景 */
-  --color-text-primary: #2c3e50; /* 主要文字颜色 */
+  --color-text-primary: #2c3e50; /* 主要文字颜色，也作为侧边栏主色 */
+  --color-text-primary-darker: #233140; /* 侧边栏稍深的背景 */
   --color-text-secondary: #7f8c8d; /* 次要文字、提示信息颜色 */
   --color-background: #f4f6f8;   /* 页面主背景色 */
   --color-surface: #ffffff;     /* 卡片、表单等元素的背景色 */
@@ -29,6 +31,7 @@
   /* 其他 */
   --border-radius: 8px; /* 圆角大小 */
   --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 卡片阴影 */
+  --box-shadow-sidebar: 4px 0 12px rgba(0, 0, 0, 0.15); /* 侧边栏阴影，使其更突出 */
   --transition-speed: 0.3s; /* 动画过渡速度 */
 }
 

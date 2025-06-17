@@ -13,4 +13,5 @@ public class EnrollmentResponseDTO {
     private Double score;  // 分数
     private Integer courseDay;  // 上课日 (1-7 代表周一到周日)
     private Integer courseTime;  // 上课时间段 (例如 1-5 代表 1-5大节)
+    private String teacherName; // 【新增】教师姓名
 }

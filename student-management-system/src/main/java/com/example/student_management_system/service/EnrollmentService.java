@@ -5,9 +5,11 @@ import com.example.student_management_system.dto.EnrollmentResponseDTO;
 import com.example.student_management_system.mapper.CourseMapper;
 import com.example.student_management_system.mapper.EnrollmentMapper;
 import com.example.student_management_system.mapper.StudentMapper;
+import com.example.student_management_system.mapper.TeacherMapper; // 新增导入
 import com.example.student_management_system.model.Course;
 import com.example.student_management_system.model.Enrollment;
 import com.example.student_management_system.model.Student;
+import com.example.student_management_system.model.Teacher; // 新增导入
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
@@ -32,6 +34,8 @@ public class EnrollmentService {
     private CourseMapper courseMapper;
     @Autowired
     private StudentMapper studentMapper;
+    @Autowired
+    private TeacherMapper teacherMapper; // 新增注入
 
     /**
      * 教师获取其某门课程的学生花名册及成绩
@@ -90,7 +94,7 @@ public class EnrollmentService {
     }
 
     /**
-     * 学生获取自己的所有成绩，并附带课程时间信息
+     * 学生获取自己的所有成绩，并附带课程时间信息和教师姓名
      */
     @Transactional(readOnly = true)
     public List<EnrollmentResponseDTO> getEnrollmentsForStudent(Long studentId) {
@@ -104,6 +108,15 @@ public class EnrollmentService {
         Map<Long, Course> courseMap = courses.stream()
                 .collect(Collectors.toMap(Course::getId, Function.identity()));
 
+        // 新增：获取所有相关教师的信息
+        Set<Long> teacherIds = courses.stream()
+                .map(Course::getTeacherId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<Teacher> teachers = teacherMapper.findByIds(List.copyOf(teacherIds)); // 假设TeacherMapper有findByIds方法
+        Map<Long, Teacher> teacherMap = teachers.stream()
+                .collect(Collectors.toMap(Teacher::getId, Function.identity()));
+
         return enrollments.stream().map(enrollment -> {
             EnrollmentResponseDTO dto = new EnrollmentResponseDTO();
             dto.setEnrollmentId(enrollment.getId());
@@ -115,6 +128,10 @@ public class EnrollmentService {
                 dto.setCredits(course.getCredits());
                 dto.setCourseDay(course.getCourseDay());
                 dto.setCourseTime(course.getCourseTime());
+
+                // 【关键修改】设置教师姓名
+                Teacher teacher = teacherMap.get(course.getTeacherId());
+                dto.setTeacherName(teacher != null ? teacher.getName() : "未知教师");
             }
             return dto;
         }).collect(Collectors.toList());

@@ -20,6 +20,14 @@
         SELECT id, teacher_id, name, password FROM teachers ORDER BY id
     </select>
 
+    <select id="findByIds" parameterType="java.util.List" resultMap="TeacherResultMap">
+        SELECT id, teacher_id, name, password FROM teachers
+        WHERE id IN
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
     <insert id="insert" parameterType="com.example.student_management_system.model.Teacher">
         INSERT INTO teachers (teacher_id, name, password)
         VALUES (#{teacherId}, #{name}, #{password})
