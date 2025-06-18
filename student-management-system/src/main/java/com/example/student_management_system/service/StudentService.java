@@ -1,6 +1,8 @@
 package com.example.student_management_system.service;
 
-import com.example.student_management_system.dto.*;
+import com.example.student_management_system.dto.DashboardStatsDTO;
+import com.example.student_management_system.dto.StudentRequestDTO; // 1. 导入新的 DTO
+import com.example.student_management_system.dto.StudentResponseDTO;
 import com.example.student_management_system.mapper.MajorMapper;
 import com.example.student_management_system.mapper.StudentMapper;
 import com.example.student_management_system.model.Major;
@@ -23,14 +25,14 @@ public class StudentService {
     private final StudentMapper studentMapper;
     private final PasswordEncoder passwordEncoder;
     private final MajorMapper majorMapper;
-    private final EnrollmentService enrollmentService; // 注入EnrollmentService
+    private final EnrollmentService enrollmentService;
 
     @Autowired
     public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder, MajorMapper majorMapper, EnrollmentService enrollmentService) {
         this.studentMapper = studentMapper;
         this.passwordEncoder = passwordEncoder;
         this.majorMapper = majorMapper;
-        this.enrollmentService = enrollmentService; // 初始化
+        this.enrollmentService = enrollmentService;
     }
 
     private StudentResponseDTO convertToResponseDto(Student student) {
@@ -66,13 +68,12 @@ public class StudentService {
     }
 
     public DashboardStatsDTO getDashboardStats() {
-        // 【修改】直接从 majorMapper 获取所有专业来进行统计
         List<Student> students = studentMapper.findAll(Collections.emptyMap());
         List<Major> majors = majorMapper.findAll();
 
         long totalStudents = students.size();
         long totalClasses = students.stream().map(Student::getClassName).distinct().count();
-        long totalMajors = majors.size(); // 直接获取专业总数
+        long totalMajors = majors.size();
         long totalGrades = students.stream()
                 .map(s -> s.getClassName().replaceAll("[^0-9]", ""))
                 .filter(s -> !s.isEmpty())
@@ -105,7 +106,8 @@ public class StudentService {
 
 
     @Transactional
-    public StudentResponseDTO createStudent(StudentCreateDTO studentDto) {
+    // 2. 修改 createStudent 方法签名
+    public StudentResponseDTO createStudent(StudentRequestDTO studentDto) {
         Student existingStudent = studentMapper.findByStudentId(studentDto.getStudentId());
         if (existingStudent != null) {
             throw new IllegalArgumentException("学号 " + studentDto.getStudentId() + " 已存在。");
@@ -113,13 +115,12 @@ public class StudentService {
 
         Student student = new Student();
 
-        if (StringUtils.hasText(studentDto.getPassword())) {
-            student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
-        } else {
-            // 如果密码为空，可以设置一个默认密码，或抛出异常
-            throw new IllegalArgumentException("初始密码不能为空。");
+        if (!StringUtils.hasText(studentDto.getPassword())) {
+            throw new IllegalArgumentException("创建学生时，初始密码不能为空。");
         }
+        student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
 
+        // 使用 DTO 中的数据填充实体
         student.setName(studentDto.getName());
         student.setGender(studentDto.getGender());
         student.setDateOfBirth(studentDto.getDateOfBirth());
@@ -140,23 +141,19 @@ public class StudentService {
         student.setSemester(studentDto.getSemester());
 
         studentMapper.insert(student);
-        // 插入后，student对象还没有数据库ID，需要重新查询一次
         Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
-
-        // 【核心修改】为新创建的学生自动分配必修课
         enrollmentService.assignCompulsoryCoursesForStudent(createdStudent);
-
         return convertToResponseDto(createdStudent);
     }
 
 
     @Transactional
-    public StudentResponseDTO updateStudent(Long id, StudentUpdateDTO studentDetails) {
+    // 3. 修改 updateStudent 方法签名
+    public StudentResponseDTO updateStudent(Long id, StudentRequestDTO studentDetails) {
         Student student = studentMapper.findById(id);
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生。");
         }
-        // 记录旧的学籍信息，用于判断是否需要重新分配课程
         Long oldMajorId = student.getMajorId();
         Integer oldAcademicYear = student.getAcademicYear();
         Integer oldSemester = student.getSemester();
@@ -167,10 +164,12 @@ public class StudentService {
                 throw new IllegalArgumentException("学号 " + studentDetails.getStudentId() + " 已被其他学生使用。");
             }
         }
+        // 管理员更新时，如果密码字段不为空，则更新密码
         if (StringUtils.hasText(studentDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
         }
 
+        // 管理员可以更新所有字段
         student.setName(studentDetails.getName());
         student.setGender(studentDetails.getGender());
         student.setDateOfBirth(studentDetails.getDateOfBirth());
@@ -195,7 +194,6 @@ public class StudentService {
             throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
         }
 
-        // 【核心修改】检查学籍信息是否有变，如有则重新分配课程
         boolean academicInfoChanged = !Objects.equals(oldMajorId, student.getMajorId()) ||
                 !Objects.equals(oldAcademicYear, student.getAcademicYear()) ||
                 !Objects.equals(oldSemester, student.getSemester());
@@ -218,18 +216,19 @@ public class StudentService {
     }
 
     @Transactional
-    public StudentResponseDTO updateStudentProfile(Long studentId, StudentProfileUpdateDTO profileDetails) {
+    // 4. 新增 updateStudentProfile 方法，并使其接收 StudentRequestDTO
+    public StudentResponseDTO updateStudentProfile(Long studentId, StudentRequestDTO profileDetails) {
         Student student = studentMapper.findById(studentId);
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + studentId + " 的学生。");
         }
 
+        // 学生更新自己的信息时，只允许修改特定字段
         if (StringUtils.hasText(profileDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(profileDetails.getPassword()));
         }
         student.setPhoneNumber(profileDetails.getPhoneNumber());
         student.setEmail(profileDetails.getEmail());
-
         student.setEthnicity(profileDetails.getEthnicity());
         student.setNativePlace(profileDetails.getNativePlace());
         student.setPoliticalStatus(profileDetails.getPoliticalStatus());

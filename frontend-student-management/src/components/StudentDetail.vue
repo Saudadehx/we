@@ -1,6 +1,5 @@
 <template>
   <div class="detail-container" v-if="student">
-    <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-content">
         <div class="header-info">
@@ -13,7 +12,6 @@
                   `${student.name} (${student.studentId})`) }}
           </p>
 
-          <!-- 状态标签 -->
           <div class="status-badges" v-if="!isCreatingNew">
             <span class="status-badge" :class="getStatusClass(student.studentStatus)">
               {{ student.studentStatus }}
@@ -27,7 +25,6 @@
           </div>
         </div>
 
-        <!-- 操作按钮组 -->
         <div class="header-actions">
           <template v-if="viewMode === 'admin'">
             <button v-if="!isEditing && !isCreatingNew" class="action-btn edit-btn" @click="startEditing">
@@ -61,10 +58,8 @@
       </div>
     </div>
 
-    <!-- 内容区域 -->
     <div class="content-wrapper">
       <div class="content-grid">
-        <!-- 基本信息卡片 -->
         <div class="info-card">
           <div class="card-header">
             <h4>基本信息</h4>
@@ -99,7 +94,9 @@
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ formatDate(student.dateOfBirth) }}</span>
                   <input v-else type="date" v-model="editableStudent.dateOfBirth" class="form-input"
-                         :disabled="viewMode === 'student'"/>
+                         :disabled="viewMode === 'student'"
+                         :min="dateValidation.birthDate.min"
+                         :max="dateValidation.birthDate.max"/>
                 </div>
               </div>
 
@@ -137,7 +134,6 @@
           </div>
         </div>
 
-        <!-- 联系方式卡片 -->
         <div class="info-card">
           <div class="card-header">
             <h4>联系方式</h4>
@@ -165,7 +161,6 @@
           </div>
         </div>
 
-        <!-- 学籍信息卡片 -->
         <div class="info-card">
           <div class="card-header">
             <h4>学籍信息</h4>
@@ -175,16 +170,19 @@
               <div class="info-item">
                 <label class="item-label">学号</label>
                 <div class="item-content">
-                  <span class="item-value primary-text">{{ student.studentId }}</span>
+                  <span v-if="!isEditing" class="item-value primary-text">{{ student.studentId }}</span>
+                  <input v-else v-model="editableStudent.studentId" class="form-input"
+                         :disabled="viewMode === 'student'" placeholder="请输入学号" />
                 </div>
               </div>
-
               <div class="info-item">
                 <label class="item-label">入学日期</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ formatDate(student.enrollmentDate) }}</span>
                   <input v-else type="date" v-model="editableStudent.enrollmentDate" class="form-input"
-                         :disabled="viewMode === 'student'"/>
+                         :disabled="viewMode === 'student'"
+                         :min="dateValidation.enrollmentDate.min"
+                         :max="dateValidation.enrollmentDate.max"/>
                 </div>
               </div>
 
@@ -272,7 +270,6 @@
           </div>
         </div>
 
-        <!-- 账户信息卡片 (管理员编辑时显示，或学生修改密码时显示) -->
         <div class="info-card" v-if="isEditing">
           <div class="card-header">
             <h4>{{ viewMode === 'admin' ? '账户安全' : '修改密码' }}</h4>
@@ -318,7 +315,6 @@ const editableStudent = ref({});
 const isCreatingNew = computed(() => !props.student.id);
 
 onMounted(async () => {
-  // 只有管理员模式才加载专业列表
   if (props.viewMode === 'admin') {
     try {
       majors.value = await majorService.getAll();
@@ -331,35 +327,36 @@ onMounted(async () => {
 
 watch(() => props.student, (newStudent) => {
   if (newStudent) {
-    // 确保专业名称被正确复制到可编辑对象中
     editableStudent.value = {
       ...newStudent,
       password: '',
-      majorName: newStudent.majorName // 明确复制专业名称
+      majorName: newStudent.majorName
     };
     isEditing.value = isCreatingNew.value;
   }
 }, { immediate: true, deep: true });
 
-// 获取当前专业名称的方法
 const getCurrentMajorName = () => {
-  // 直接返回已有的专业名称，不区分模式
-  const currentStudent = isEditing.value ? editableStudent.value : student.value;
+  const currentStudent = isEditing.value ? editableStudent.value : props.student;
+  // 在编辑模式下，如果 majorId 变了，我们需要从 majors 列表中找到新的名称
+  if (isEditing.value && props.viewMode === 'admin' && currentStudent.majorId) {
+    const foundMajor = majors.value.find(m => m.id === currentStudent.majorId);
+    return foundMajor ? foundMajor.name : '未知专业';
+  }
+  // 在其他情况下，直接使用 DTO 里的 majorName
   return currentStudent?.majorName || '未分配';
 };
 
-// 获取密码输入框占位符
 const getPasswordPlaceholder = () => {
-  if (isCreatingNew.value) return '请输入初始密码（6-20位）';
+  if (isCreatingNew.value) return '请输入初始密码（必填）';
   if (props.viewMode === 'admin') return '不修改请留空';
-  return '请输入新密码（6-20位）';
+  return '不修改请留空';
 };
 
-// 获取密码提示信息
 const getPasswordHint = () => {
-  if (isCreatingNew.value) return '建议使用包含字母和数字的组合密码';
-  if (props.viewMode === 'admin') return '输入新密码将重置该学生的登录密码';
-  return '请输入新密码，建议使用包含字母和数字的组合';
+  if (isCreatingNew.value) return '建议使用包含字母和数字的组合密码。';
+  if (props.viewMode === 'admin') return '输入新密码将重置该学生的登录密码。';
+  return '输入新密码以更新您的登录密码。';
 };
 
 const formatDate = (dateString) => {
@@ -395,12 +392,34 @@ const cancelEditing = () => {
   editableStudent.value = {
     ...props.student,
     password: '',
-    majorName: props.student.majorName // 明确复制专业名称
+    majorName: props.student.majorName
   };
   isEditing.value = false;
 };
 
+const dateValidation = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  const currentYear = new Date().getFullYear();
+  return {
+    // 为出生日期设定一个合理的范围
+    birthDate: {
+      min: '1920-01-01', // 例如，不允许选择1920年之前的日期
+      max: today          // 最晚只能是今天
+    },
+    // 为入学日期设定一个合理的范围
+    enrollmentDate: {
+      min: '2000-01-01', // 例如，系统只处理2000年后的入学
+      max: `${currentYear + 5}-12-31` // 例如，最多允许填到未来5年
+    }
+  };
+});
+
 const handleSave = () => {
+  // 在创建新学生时，确保密码不为空
+  if (isCreatingNew.value && !editableStudent.value.password) {
+    showNotification('创建新学生时必须设置初始密码。', 'error');
+    return;
+  }
   if (isCreatingNew.value) {
     emit('create-student', editableStudent.value);
   } else {
@@ -414,8 +433,6 @@ const handleDelete = () => {
   }
 };
 
-// 使用computed来访问props.student
-const student = computed(() => props.student);
 </script>
 
 <style scoped>
