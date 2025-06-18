@@ -1,41 +1,53 @@
+// Description: 课程服务类，负责课程目录和课程安排的管理
 package com.example.student_management_system.dto;
 
 import lombok.Data;
 
-// 使用泛型，T 代表任何类型的数据
 @Data
 public class ApiResult<T> {
 
-    private boolean success; // 操作是否成功
-    private int code;        // 业务状态码 (例如 200, 404, 500)
-    private String message;  // 返回的消息
-    private T data;          // 返回的数据
+    private boolean success; // 是否成功
+    private int code; // 状态码
+    private String message; // 响应消息
+    private T data; // 响应数据
 
-    // 私有化构造函数，强制使用静态工厂方法创建实例
     private ApiResult() {}
 
-    // 静态工厂方法：用于创建成功的响应
     public static <T> ApiResult<T> success(T data) {
-        ApiResult<T> result = new ApiResult<>();
-        result.setSuccess(true);
-        result.setCode(200); // 约定200为成功
-        result.setMessage("操作成功");
-        result.setData(data);
+        ApiResult<T> result = new ApiResult<>(); // 创建一个新的 ApiResult 实例
+        result.setSuccess(true); // 设置成功标志
+        result.setCode(200); // 设置状态码为 200
+        result.setMessage("操作成功");  // 设置默认成功消息
+        result.setData(data); // 设置响应数据
         return result;
     }
 
-    // 重载一个不带数据的成功响应
     public static <T> ApiResult<T> success() {
         return success(null);
     }
 
-    // 静态工厂方法：用于创建失败的响应
     public static <T> ApiResult<T> failure(int code, String message) {
         ApiResult<T> result = new ApiResult<>();
         result.setSuccess(false);
         result.setCode(code);
         result.setMessage(message);
-        result.setData(null); // 失败时数据为null
+        result.setData(null);
+        return result;
+    }
+
+    /**
+     * 【新增】一个可以携带错误数据的失败响应工厂方法
+     * @param code 状态码
+     * @param message 错误主消息
+     * @param data 错误的详细数据 (例如，字段验证错误映射)
+     * @return 统一的API结果
+     */
+    public static <T> ApiResult<T> failure(int code, String message, T data) {
+        ApiResult<T> result = new ApiResult<>();
+        result.setSuccess(false);
+        result.setCode(code);
+        result.setMessage(message);
+        result.setData(data); // 将详细错误信息放入data字段
         return result;
     }
 }

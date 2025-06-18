@@ -127,7 +127,6 @@ const getScoreClass = (score) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
 .timetable-card { padding: 0; overflow-x: auto; }
 .timetable { display: grid; grid-template-columns: 120px repeat(7, minmax(150px, 1fr)); gap: 1px; background-color: var(--color-border); border-radius: var(--border-radius); overflow: hidden; min-width: 900px; }
 .header-cell, .class-cell { background-color: var(--color-surface); padding: 10px; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }

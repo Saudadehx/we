@@ -150,8 +150,6 @@ const handleDeleteTeacher = async (id) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
-@import '@/assets/styles/common-modal.css';
 
 .no-cours {
   color: #999;

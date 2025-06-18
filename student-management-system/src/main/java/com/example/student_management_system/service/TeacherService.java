@@ -38,16 +38,13 @@ public class TeacherService {
         teacher.setPassword(passwordEncoder.encode(teacherDTO.getPassword()));
 
         teacherMapper.insert(teacher);
+        // 创建成功后，返回的DTO不应包含密码
         teacherDTO.setPassword(null);
+        // 【优化】通过查询返回的对象获取ID，并设置回DTO，确保DTO是完整的
+        teacherDTO.setId(teacher.getId());
         return teacherDTO;
     }
-
-    /**
-     * 获取所有教师列表，并附带他们所教授的课程名称字符串
-     * @return 包含课程名称字符串的教师列表
-     */
     public List<TeacherDetailDTO> getAllTeachersWithOfferings() {
-        // ✨ 简化：直接调用一步到位的SQL查询，不再需要在Java中进行数据组装
         return teacherMapper.findAllWithCourseNames();
     }
 
@@ -57,14 +54,23 @@ public class TeacherService {
         if (teacher == null) {
             throw new ResourceNotFoundException("ID为 " + id + " 的教师不存在。");
         }
+
+        // 检查更新后的工号是否与其他人冲突
+        Teacher conflictTeacher = teacherMapper.findByTeacherId(teacherDTO.getTeacherId());
+        if (conflictTeacher != null && !conflictTeacher.getId().equals(id)) {
+            throw new IllegalArgumentException("教师工号 " + teacherDTO.getTeacherId() + " 已被其他教师使用。");
+        }
+
         teacher.setName(teacherDTO.getName());
         teacher.setTeacherId(teacherDTO.getTeacherId());
 
+        // 仅当传入的密码非空时才更新密码
         if (StringUtils.hasText(teacherDTO.getPassword())) {
             teacher.setPassword(passwordEncoder.encode(teacherDTO.getPassword()));
         }
 
         teacherMapper.update(teacher);
+        // 更新成功后，返回的DTO不应包含密码
         teacherDTO.setPassword(null);
         return teacherDTO;
     }
@@ -74,6 +80,7 @@ public class TeacherService {
         if (teacherMapper.findById(id) == null) {
             throw new ResourceNotFoundException("ID为 " + id + " 的教师不存在，无法删除。");
         }
+        // 在删除教师前，解除其与所有课程安排的关联
         courseOfferingMapper.disassociateTeacherFromOfferings(id);
         teacherMapper.deleteById(id);
     }

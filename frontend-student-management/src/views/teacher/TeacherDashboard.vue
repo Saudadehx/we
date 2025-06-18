@@ -72,7 +72,6 @@ onMounted(fetchMyCourses);
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
 
 .loading-indicator, .no-data {
   text-align: center;

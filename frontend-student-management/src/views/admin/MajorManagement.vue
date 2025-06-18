@@ -134,9 +134,6 @@ const handleDeleteMajor = async (id) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
-@import '@/assets/styles/common-modal.css';
-
 textarea {
   width: 100%;
   padding: 10px;

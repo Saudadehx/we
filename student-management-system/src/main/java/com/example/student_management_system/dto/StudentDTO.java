@@ -1,6 +1,9 @@
+// Description: 课程服务类，负责课程目录和课程安排的管理
 package com.example.student_management_system.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -21,8 +24,12 @@ public class StudentDTO {
     @Size(min = 2, max = 50, message = "姓名长度必须在2到50之间")
     private String name;
 
+    // 【优化】增加@NotBlank校验
+    @NotBlank(message = "性别不能为空")
     private String gender;
 
+    // 【优化】增加@NotNull校验
+    @NotNull(message = "出生日期不能为空")
     @Past(message = "出生日期必须是过去的时间")
     private LocalDate dateOfBirth;
 
@@ -38,6 +45,8 @@ public class StudentDTO {
 
     private String college;
 
+    // 【优化】增加@NotBlank校验
+    @NotBlank(message = "班级名称不能为空")
     @Size(max = 100, message = "班级名称长度不能超过100")
     private String className;
 
@@ -56,6 +65,6 @@ public class StudentDTO {
 
     // --- 仅用于请求的密码字段 ---
     // 在序列化为JSON（即响应给前端）时，此字段将被忽略。
-    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 }

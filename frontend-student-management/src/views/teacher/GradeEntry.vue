@@ -90,8 +90,6 @@ onMounted(fetchEnrollments);
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
-
 .back-btn {
   background-color: #6c757d;
   color: white;

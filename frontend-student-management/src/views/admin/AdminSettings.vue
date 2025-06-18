@@ -71,8 +71,6 @@ onMounted(fetchStatus);
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
-
 .settings-panel {
   max-width: 800px;
   margin: auto;

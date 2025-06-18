@@ -1,4 +1,6 @@
 /* src/style.css */
+@import '@/assets/styles/common-page.css';
+@import '@/assets/styles/common-modal.css';
 
 /* 1. 定义全局设计变量 (CSS Custom Properties) */
 :root {

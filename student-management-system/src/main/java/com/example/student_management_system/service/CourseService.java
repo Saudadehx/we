@@ -107,16 +107,14 @@ public class CourseService {
 
     // --- 课程安排管理 ---
 
-    // ✨ 移除 `deduplicateAndMergeOfferings` 方法，因为MyBatis的<collection>已经处理了去重和合并
-
+    // 【优化】: 直接返回MyBatis处理好的结果，不再需要在Java中手动去重合并
     public List<CourseOffering> getAllOfferings() {
-        // ✨ 直接返回Mapper的结果
         return courseOfferingMapper.findAllWithDetails();
     }
 
+    // 【优化】: 直接返回MyBatis处理好的结果
     @Transactional(readOnly = true)
     public List<CourseOffering> findOfferingsByTeacherId(Long teacherId) {
-        // ✨ 直接返回Mapper的结果
         return courseOfferingMapper.findOfferingsByTeacherId(teacherId);
     }
 
@@ -135,8 +133,10 @@ public class CourseService {
             }
         }
 
-        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, offering));
-        return offering;
+        // 【优化】: 创建后，重新从数据库获取完整的、聚合好的课程信息用于发布事件
+        CourseOffering createdOfferingWithDetails = courseOfferingMapper.findById(offering.getId());
+        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, createdOfferingWithDetails));
+        return createdOfferingWithDetails;
     }
 
     public CourseOffering updateOffering(CourseOffering offering) {
@@ -159,7 +159,7 @@ public class CourseService {
             }
         }
 
-        // ✨ 重新从数据库获取完整的、聚合好的课程信息用于发布事件
+        // 【优化】: 更新后，同样重新获取完整信息再发布事件
         CourseOffering updatedOfferingWithDetails = courseOfferingMapper.findById(offering.getId());
         eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, updatedOfferingWithDetails));
         return updatedOfferingWithDetails;
@@ -167,7 +167,6 @@ public class CourseService {
 
 
     public void deleteOffering(Long offeringId) {
-        // ✨ 在删除课程安排前，先删除关联的专业链接，保证外键约束
         offeringMajorLinkMapper.deleteByOfferingId(offeringId);
         courseOfferingMapper.deleteById(offeringId);
     }

@@ -34,11 +34,17 @@ public class StudentService {
         this.enrollmentService = enrollmentService;
     }
 
+    // --- 数据转换辅助方法 ---
+
+    /**
+     * 将 Student 实体转换为 StudentDTO。
+     */
     private StudentDTO convertToDto(Student student) {
         if (student == null) return null;
 
         StudentDTO dto = new StudentDTO();
         dto.setId(student.getId());
+        dto.setStudentId(student.getStudentId());
         dto.setName(student.getName());
         dto.setGender(student.getGender());
         dto.setDateOfBirth(student.getDateOfBirth());
@@ -47,7 +53,6 @@ public class StudentService {
         dto.setPoliticalStatus(student.getPoliticalStatus());
         dto.setPhoneNumber(student.getPhoneNumber());
         dto.setEmail(student.getEmail());
-        dto.setStudentId(student.getStudentId());
         dto.setCollege(student.getCollege());
         dto.setClassName(student.getClassName());
         dto.setEnrollmentDate(student.getEnrollmentDate());
@@ -68,6 +73,35 @@ public class StudentService {
         return dto;
     }
 
+    /**
+     * 【新增】一个辅助方法，用于从DTO更新实体，减少重复代码。
+     * @param student 要被更新的实体对象
+     * @param dto 包含新数据的DTO对象
+     */
+    private void updateEntityFromDto(Student student, StudentDTO dto) {
+        student.setName(dto.getName());
+        student.setGender(dto.getGender());
+        student.setDateOfBirth(dto.getDateOfBirth());
+        student.setEthnicity(dto.getEthnicity());
+        student.setNativePlace(dto.getNativePlace());
+        student.setPoliticalStatus(dto.getPoliticalStatus());
+        student.setPhoneNumber(dto.getPhoneNumber());
+        student.setEmail(dto.getEmail());
+        student.setStudentId(dto.getStudentId());
+        student.setCollege(dto.getCollege());
+        student.setClassName(dto.getClassName());
+        student.setEnrollmentDate(dto.getEnrollmentDate());
+        student.setStudentStatus(dto.getStudentStatus());
+        student.setGpa(dto.getGpa());
+        student.setPhotoUrl(dto.getPhotoUrl());
+        student.setMajorId(dto.getMajorId());
+        student.setAcademicYear(dto.getAcademicYear());
+        student.setSemester(dto.getSemester());
+    }
+
+
+    // --- 公共服务方法 ---
+
     public DashboardStatsDTO getDashboardStats() {
         List<Student> students = studentMapper.findAll(Collections.emptyMap());
         List<Major> majors = majorMapper.findAll();
@@ -75,6 +109,7 @@ public class StudentService {
         long totalStudents = students.size();
         long totalClasses = students.stream().map(Student::getClassName).distinct().count();
         long totalMajors = majors.size();
+        // 年级计算逻辑保持不变
         long totalGrades = students.stream()
                 .map(s -> s.getClassName().replaceAll("[^0-9]", ""))
                 .filter(s -> !s.isEmpty())
@@ -90,7 +125,6 @@ public class StudentService {
         return stats;
     }
 
-
     @Transactional(readOnly = true)
     public List<StudentDTO> getAllStudents() {
         return studentMapper.findAll(Collections.emptyMap()).stream()
@@ -98,117 +132,99 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
-
     @Transactional(readOnly = true)
     public Optional<StudentDTO> getStudentById(Long id) {
         Student student = studentMapper.findById(id);
         return Optional.ofNullable(convertToDto(student));
     }
 
-
+    /**
+     * 【优化】创建学生的方法，逻辑更清晰
+     */
     @Transactional
     public StudentDTO createStudent(StudentDTO studentDto) {
-        Student existingStudent = studentMapper.findByStudentId(studentDto.getStudentId());
-        if (existingStudent != null) {
+        // 1. 校验学号是否存在
+        if (studentMapper.findByStudentId(studentDto.getStudentId()) != null) {
             throw new IllegalArgumentException("学号 " + studentDto.getStudentId() + " 已存在。");
         }
-
-        Student student = new Student();
-
+        // 2. 校验初始密码
         if (!StringUtils.hasText(studentDto.getPassword())) {
             throw new IllegalArgumentException("创建学生时，初始密码不能为空。");
         }
+
+        // 3. 创建并填充实体
+        Student student = new Student();
+        updateEntityFromDto(student, studentDto); // 使用辅助方法填充
         student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
 
-        student.setName(studentDto.getName());
-        student.setGender(studentDto.getGender());
-        student.setDateOfBirth(studentDto.getDateOfBirth());
-        student.setEthnicity(studentDto.getEthnicity());
-        student.setNativePlace(studentDto.getNativePlace());
-        student.setPoliticalStatus(studentDto.getPoliticalStatus());
-        student.setPhoneNumber(studentDto.getPhoneNumber());
-        student.setEmail(studentDto.getEmail());
-        student.setStudentId(studentDto.getStudentId());
-        student.setCollege(studentDto.getCollege());
-        student.setClassName(studentDto.getClassName());
-        student.setEnrollmentDate(studentDto.getEnrollmentDate());
-        student.setStudentStatus(studentDto.getStudentStatus());
-        student.setGpa(studentDto.getGpa());
-        student.setPhotoUrl(studentDto.getPhotoUrl());
-        student.setMajorId(studentDto.getMajorId());
-        student.setAcademicYear(studentDto.getAcademicYear());
-        student.setSemester(studentDto.getSemester());
-
+        // 4. 插入数据库
         studentMapper.insert(student);
         Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
+
+        // 5. 分配必修课
         enrollmentService.assignCompulsoryCoursesForStudent(createdStudent);
+
+        // 6. 返回DTO
         return convertToDto(createdStudent);
     }
 
-
+    /**
+     * 【优化】更新学生信息的方法，逻辑更清晰
+     */
     @Transactional
     public StudentDTO updateStudent(Long id, StudentDTO studentDetails) {
+        // 1. 查找现有学生
         Student student = studentMapper.findById(id);
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生。");
         }
+
+        // 2. 记录旧的学籍信息，用于后续比较
         Long oldMajorId = student.getMajorId();
         Integer oldAcademicYear = student.getAcademicYear();
         Integer oldSemester = student.getSemester();
 
+        // 3. 校验新学号是否冲突
         if (studentDetails.getStudentId() != null && !studentDetails.getStudentId().equals(student.getStudentId())) {
-            Student studentWithNewStudentId = studentMapper.findByStudentId(studentDetails.getStudentId());
-            if (studentWithNewStudentId != null) {
+            if (studentMapper.findByStudentId(studentDetails.getStudentId()) != null) {
                 throw new IllegalArgumentException("学号 " + studentDetails.getStudentId() + " 已被其他学生使用。");
             }
         }
+
+        // 4. 从DTO更新实体信息
+        updateEntityFromDto(student, studentDetails); // 使用辅助方法
+
+        // 5. 如果提供了新密码，则加密并更新
         if (StringUtils.hasText(studentDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
         }
 
-        student.setName(studentDetails.getName());
-        student.setGender(studentDetails.getGender());
-        student.setDateOfBirth(studentDetails.getDateOfBirth());
-        student.setEthnicity(studentDetails.getEthnicity());
-        student.setNativePlace(studentDetails.getNativePlace());
-        student.setPoliticalStatus(studentDetails.getPoliticalStatus());
-        student.setPhoneNumber(studentDetails.getPhoneNumber());
-        student.setEmail(studentDetails.getEmail());
-        student.setStudentId(studentDetails.getStudentId());
-        student.setCollege(studentDetails.getCollege());
-        student.setClassName(studentDetails.getClassName());
-        student.setEnrollmentDate(studentDetails.getEnrollmentDate());
-        student.setStudentStatus(studentDetails.getStudentStatus());
-        student.setGpa(studentDetails.getGpa());
-        student.setPhotoUrl(studentDetails.getPhotoUrl());
-        student.setMajorId(studentDetails.getMajorId());
-        student.setAcademicYear(studentDetails.getAcademicYear());
-        student.setSemester(studentDetails.getSemester());
-
+        // 6. 更新数据库
         int affectedRows = studentMapper.update(student);
         if (affectedRows == 0) {
             throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
         }
 
+        // 7. 检查学籍信息是否变更，如果变更则同步课程注册
         boolean academicInfoChanged = !Objects.equals(oldMajorId, student.getMajorId()) ||
                 !Objects.equals(oldAcademicYear, student.getAcademicYear()) ||
                 !Objects.equals(oldSemester, student.getSemester());
 
         if (academicInfoChanged) {
-            // ✨ 调用新的、更完整的课程同步方法
             enrollmentService.reconcileEnrollmentsForStudent(student);
         }
 
+        // 8. 返回更新后的DTO
         return convertToDto(student);
     }
 
-
     @Transactional
     public void deleteStudent(Long id) {
-        Student student = studentMapper.findById(id);
-        if (student == null) {
+        if (studentMapper.findById(id) == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生，无法删除。");
         }
+        // 注意：这里没有处理级联删除选课记录，取决于数据库设计。
+        // 如果有外键约束，直接删除可能会失败。
         studentMapper.deleteById(id);
     }
 
@@ -219,6 +235,7 @@ public class StudentService {
             throw new ResourceNotFoundException("未找到ID为 " + studentId + " 的学生。");
         }
 
+        // 学生只能更新部分信息
         if (StringUtils.hasText(profileDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(profileDetails.getPassword()));
         }

@@ -372,9 +372,6 @@ const handleCatalogDelete = async (id) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/common-page.css';
-@import '@/assets/styles/common-modal.css';
-
 /* --- 整体布局 --- */
 .page-container { padding: 16px; background-color: #f4f6f9; font-family: var(--font-family-base); }
 .course-mgmt-layout { display: flex; height: calc(100vh - 32px); gap: 16px; }

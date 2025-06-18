@@ -192,9 +192,6 @@ const formatCourseType = (type) => {
 </script>
 
 <style scoped>
-/* 样式与之前保持一致，此处省略 */
-@import '@/assets/styles/common-page.css';
-
 .course-type {
   padding: 4px 8px;
   border-radius: 4px;
