@@ -6,7 +6,6 @@
     <div v-else-if="studentData">
       <StudentDetail
           :student="studentData"
-          :is-admin="false"
           view-mode="student"
           :is-saving="isSaving"
           @update-student="handleProfileUpdate"
@@ -25,42 +24,35 @@ import { showNotification } from '@/services/notificationStore.js';
 import StudentDetail from '@/components/StudentDetail.vue';
 
 const studentData = ref(null);
-const isLoading = ref(true); // 新增：用于控制初始加载状态
-const isSaving = ref(false);  // 新增：用于控制“保存中”的状态
+const isLoading = ref(true);
+const isSaving = ref(false);
 
-// 封装一个独立的获取数据的函数
 const fetchProfile = async () => {
   isLoading.value = true;
   try {
     studentData.value = await studentService.getMyProfile();
   } catch (error) {
     showNotification('加载个人信息失败: ' + error.message, 'error');
-    studentData.value = null; // 加载失败，确保不显示旧数据
+    studentData.value = null;
   } finally {
     isLoading.value = false;
   }
 };
 
-// 页面加载时，调用此函数
 onMounted(fetchProfile);
 
-// 【重要】改造后的更新处理函数
 const handleProfileUpdate = async (formData) => {
-  if (isSaving.value) return; // 防止重复提交
+  if (isSaving.value) return;
   isSaving.value = true;
 
   try {
-    const dataToUpdate = {
-      password: formData.password,
-      phoneNumber: formData.phoneNumber,
-      email: formData.email
-    };
-
-    await studentService.updateMyProfile(dataToUpdate);
+    // ✨ 简化：直接传递整个 formData。
+    // 后端服务层 `updateStudentProfile` 会智能地只提取需要更新的字段。
+    await studentService.updateMyProfile(formData);
 
     showNotification('个人信息更新成功！', 'success');
 
-    // 【关键】保存成功后，重新从服务器获取最新的数据，确保页面同步
+    // 保存成功后，重新从服务器获取最新的数据
     await fetchProfile();
 
   } catch (error) {

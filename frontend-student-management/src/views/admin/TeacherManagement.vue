@@ -22,8 +22,8 @@
           <td>{{ teacher.teacherId }}</td>
           <td>{{ teacher.name }}</td>
           <td>
-            <span v-if="teacher.taughtCourses && teacher.taughtCourses.length > 0">
-              {{ teacher.taughtCourses.join(', ') }}
+            <span v-if="teacher.taughtCourses">
+              {{ teacher.taughtCourses }}
             </span>
             <span v-else class="no-cours">暂未分配课程</span>
           </td>
@@ -81,7 +81,7 @@ const editableTeacher = ref({
 
 const fetchTeachers = async () => {
   try {
-    // 后端返回的是 TeacherDetailDTO
+    // ✨ 后端现在返回 TeacherDetailDTO 列表，其中 taughtCourses 是一个字符串
     teachers.value = await teacherService.getAll();
   } catch (error) {
     showNotification('获取教师列表失败', 'error');
@@ -101,7 +101,7 @@ const openAddModal = () => {
 };
 
 const openEditModal = (teacher) => {
-  // 注意：我们只编辑教师基本信息，taughtCourses 是只读的
+  // ✨ TeacherDetailDTO可以直接用于编辑，因为它的字段包含了 TeacherDTO
   editableTeacher.value = {
     id: teacher.id,
     teacherId: teacher.teacherId,

@@ -10,10 +10,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -110,49 +107,17 @@ public class CourseService {
 
     // --- 课程安排管理 ---
 
-    private List<CourseOffering> deduplicateAndMergeOfferings(List<CourseOffering> rawList) {
-        if (rawList == null || rawList.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        // 使用课程安排的ID作为key，将列表转换为Map，这会自动处理ID重复的情况
-        Map<Long, CourseOffering> offeringsMap = rawList.stream()
-                .collect(Collectors.toMap(
-                        CourseOffering::getId,       // Map的key
-                        Function.identity(),         // Map的value
-                        (existingOffering, newOffering) -> { // 合并函数：当key冲突时执行
-                            // 如果已存在的对象没有专业列表，则初始化
-                            if (existingOffering.getAssociatedMajors() == null) {
-                                existingOffering.setAssociatedMajors(new ArrayList<>());
-                            }
-                            // 将新对象中的专业信息合并到已存在的对象中
-                            if (newOffering.getAssociatedMajors() != null) {
-                                existingOffering.getAssociatedMajors().addAll(newOffering.getAssociatedMajors());
-                            }
-                            // 对合并后的专业列表也进行去重，防止意外加入重复专业
-                            if (existingOffering.getAssociatedMajors() != null) {
-                                existingOffering.setAssociatedMajors(
-                                        existingOffering.getAssociatedMajors().stream()
-                                                .distinct() // MajorInfo需要有正确的equals/hashCode（@Data已提供）
-                                                .collect(Collectors.toList())
-                                );
-                            }
-                            return existingOffering; // 返回合并后的对象
-                        }
-                ));
-
-        return new ArrayList<>(offeringsMap.values());
-    }
+    // ✨ 移除 `deduplicateAndMergeOfferings` 方法，因为MyBatis的<collection>已经处理了去重和合并
 
     public List<CourseOffering> getAllOfferings() {
-        List<CourseOffering> rawList = courseOfferingMapper.findAllWithDetails();
-        return deduplicateAndMergeOfferings(rawList);
+        // ✨ 直接返回Mapper的结果
+        return courseOfferingMapper.findAllWithDetails();
     }
 
     @Transactional(readOnly = true)
     public List<CourseOffering> findOfferingsByTeacherId(Long teacherId) {
-        List<CourseOffering> rawList = courseOfferingMapper.findOfferingsByTeacherId(teacherId);
-        return deduplicateAndMergeOfferings(rawList);
+        // ✨ 直接返回Mapper的结果
+        return courseOfferingMapper.findOfferingsByTeacherId(teacherId);
     }
 
 
@@ -194,12 +159,16 @@ public class CourseService {
             }
         }
 
-        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, offering));
-        return offering;
+        // ✨ 重新从数据库获取完整的、聚合好的课程信息用于发布事件
+        CourseOffering updatedOfferingWithDetails = courseOfferingMapper.findById(offering.getId());
+        eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, updatedOfferingWithDetails));
+        return updatedOfferingWithDetails;
     }
 
 
     public void deleteOffering(Long offeringId) {
+        // ✨ 在删除课程安排前，先删除关联的专业链接，保证外键约束
+        offeringMajorLinkMapper.deleteByOfferingId(offeringId);
         courseOfferingMapper.deleteById(offeringId);
     }
 

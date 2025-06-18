@@ -2,19 +2,19 @@ package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.EnrollmentDTO;
 import com.example.student_management_system.dto.EnrollmentResponseDTO;
-import com.example.student_management_system.event.CourseOfferingUpdatedEvent; // ✨ 新增
+import com.example.student_management_system.event.CourseOfferingUpdatedEvent;
 import com.example.student_management_system.mapper.*;
 import com.example.student_management_system.model.*;
-import lombok.extern.slf4j.Slf4j; // ✨ 新增
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener; // ✨ 新增
+import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase; // ✨ 新增
-import org.springframework.transaction.event.TransactionalEventListener; // ✨ 新增
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
@@ -43,6 +43,48 @@ public class EnrollmentService {
         this.offeringMajorLinkMapper = offeringMajorLinkMapper;
         this.systemSettingService = systemSettingService;
     }
+
+    /**
+     * ✨ 新增方法：用于在学生学籍信息（专业/学年/学期）更新后，同步其课程注册记录。
+     * 这个方法会先清理掉旧的、不再适用的课程，然后分配新学期对应的必修课。
+     * @param student 更新信息后的学生对象
+     */
+    @Transactional
+    public void reconcileEnrollmentsForStudent(Student student) {
+        log.info("开始为学生 {} (ID: {}) 同步课程注册记录...", student.getName(), student.getId());
+
+        // 1. 获取学生当前所有的课程注册记录
+        List<Enrollment> currentEnrollments = enrollmentMapper.findByStudentId(student.getId());
+
+        if (currentEnrollments != null && !currentEnrollments.isEmpty()) {
+            log.debug("学生 {} 当前有 {} 条注册记录，开始清理...", student.getName(), currentEnrollments.size());
+            // 2. 遍历并移除不匹配新学籍且未出分的课程
+            for (Enrollment enrollment : currentEnrollments) {
+                // 只处理没有成绩的课程
+                if (enrollment.getScore() == null) {
+                    CourseOffering offering = courseOfferingMapper.findById(enrollment.getCourseOfferingId());
+                    if (offering != null) {
+                        // 检查课程的学年和学期是否与学生新的学年学期匹配
+                        boolean isCourseOutOfDate = !Objects.equals(offering.getAcademicYear(), student.getAcademicYear()) ||
+                                !Objects.equals(offering.getSemester(), student.getSemester());
+
+                        if (isCourseOutOfDate) {
+                            // 课程已过时，删除该注册记录
+                            log.info("课程 '{}' (Offering ID: {}) 与学生新的学籍 ({}-{}学年, 第{}学期) 不匹配，将自动退选。",
+                                    offering.getCourseName(), offering.getId(), student.getAcademicYear(), student.getAcademicYear() + 1, student.getSemester());
+                            enrollmentMapper.deleteById(enrollment.getId());
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. 为学生分配新学籍对应的必修课（此方法内部会防止重复注册）
+        log.info("清理完成，开始为学生 {} 分配新学期的必修课...", student.getName());
+        assignCompulsoryCoursesForStudent(student);
+        log.info("学生 {} 的课程同步完成。", student.getName());
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void assignCourseInNewTransaction(Long offeringDbId, Long studentDbId) {
         // 这个方法体就是为了在一个新事务中执行选课逻辑
@@ -292,7 +334,9 @@ public class EnrollmentService {
         if (!CollectionUtils.isEmpty(enrollments)) {
             boolean alreadyEnrolled = enrollments.stream().anyMatch(e -> e.getCourseOfferingId().equals(offeringDbId));
             if (alreadyEnrolled) {
-                throw new IllegalArgumentException("该学生已选修此课程安排。");
+                // ✨ 修改：为了兼容自动分配课程的场景，此处不再抛出异常，而是静默返回。
+                log.warn("学生(ID:{})已选修课程(Offering ID:{})，跳过此次注册。", studentDbId, offeringDbId);
+                return null;
             }
             CourseOffering targetOffering = courseOfferingMapper.findById(offeringDbId);
             List<Long> enrolledOfferingIds = enrollments.stream().map(Enrollment::getCourseOfferingId).collect(Collectors.toList());

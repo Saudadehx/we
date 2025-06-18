@@ -10,10 +10,12 @@
         <result property="semester" column="semester"/>
         <result property="courseDay" column="course_day"/>
         <result property="courseTime" column="course_time"/>
+
         <result property="courseName" column="course_name"/>
         <result property="courseCode" column="course_code"/>
         <result property="credits" column="credits"/>
         <result property="teacherName" column="teacher_name"/>
+
         <collection property="associatedMajors" ofType="com.example.student_management_system.model.CourseOffering$MajorInfo">
             <id property="majorId" column="major_id"/>
             <result property="majorName" column="major_name"/>
@@ -26,8 +28,8 @@
             co.id as offering_id, co.course_catalog_id, co.teacher_id, co.academic_year, co.semester, co.course_day, co.course_time,
             cc.name as course_name, cc.course_code, cc.credits,
             t.name as teacher_name,
-            oml.course_type,
-            m.id as major_id, m.name as major_name
+            oml.major_id, oml.course_type,
+            m.name as major_name
         FROM course_offerings co
                  JOIN course_catalogs cc ON co.course_catalog_id = cc.id
                  LEFT JOIN teachers t ON co.teacher_id = t.id
@@ -41,14 +43,14 @@
             co.id as offering_id, co.course_catalog_id, co.teacher_id, co.academic_year, co.semester, co.course_day, co.course_time,
             cc.name as course_name, cc.course_code, cc.credits,
             t.name as teacher_name,
-            oml.course_type,
-            m.id as major_id, m.name as major_name
+            oml.major_id, oml.course_type,
+            m.name as major_name
         FROM course_offerings co
                  JOIN course_catalogs cc ON co.course_catalog_id = cc.id
                  LEFT JOIN teachers t ON co.teacher_id = t.id
                  LEFT JOIN offering_major_links oml ON co.id = oml.course_offering_id
                  LEFT JOIN majors m ON oml.major_id = m.id
-        ORDER BY co.academic_year, co.semester, co.course_day, co.course_time
+        ORDER BY co.academic_year, co.semester, co.id, m.id
     </select>
 
     <select id="findOfferingsByTeacherId" parameterType="long" resultMap="OfferingWithDetailsResultMap">
@@ -56,14 +58,15 @@
             co.id as offering_id, co.course_catalog_id, co.teacher_id, co.academic_year, co.semester, co.course_day, co.course_time,
             cc.name as course_name, cc.course_code, cc.credits,
             t.name as teacher_name,
-            oml.course_type,
-            m.id as major_id, m.name as major_name
+            oml.major_id, oml.course_type,
+            m.name as major_name
         FROM course_offerings co
                  JOIN course_catalogs cc ON co.course_catalog_id = cc.id
                  LEFT JOIN teachers t ON co.teacher_id = t.id
                  LEFT JOIN offering_major_links oml ON co.id = oml.course_offering_id
                  LEFT JOIN majors m ON oml.major_id = m.id
         WHERE co.teacher_id = #{teacherId}
+        ORDER BY co.id, m.id
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.CourseOffering" useGeneratedKeys="true" keyProperty="id">

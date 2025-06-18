@@ -1,8 +1,7 @@
 package com.example.student_management_system.service;
 
 import com.example.student_management_system.dto.DashboardStatsDTO;
-import com.example.student_management_system.dto.StudentRequestDTO; // 1. 导入新的 DTO
-import com.example.student_management_system.dto.StudentResponseDTO;
+import com.example.student_management_system.dto.StudentDTO;
 import com.example.student_management_system.mapper.MajorMapper;
 import com.example.student_management_system.mapper.StudentMapper;
 import com.example.student_management_system.model.Major;
@@ -35,14 +34,10 @@ public class StudentService {
         this.enrollmentService = enrollmentService;
     }
 
-    private StudentResponseDTO convertToResponseDto(Student student) {
+    private StudentDTO convertToDto(Student student) {
         if (student == null) return null;
-        Major major = null;
-        if (student.getMajorId() != null) {
-            major = majorMapper.findById(student.getMajorId());
-        }
 
-        StudentResponseDTO dto = new StudentResponseDTO();
+        StudentDTO dto = new StudentDTO();
         dto.setId(student.getId());
         dto.setName(student.getName());
         dto.setGender(student.getGender());
@@ -62,7 +57,13 @@ public class StudentService {
         dto.setMajorId(student.getMajorId());
         dto.setAcademicYear(student.getAcademicYear());
         dto.setSemester(student.getSemester());
-        dto.setMajorName(major != null ? major.getName() : "未分配");
+
+        if (student.getMajorId() != null) {
+            Major major = majorMapper.findById(student.getMajorId());
+            dto.setMajorName(major != null ? major.getName() : "未分配");
+        } else {
+            dto.setMajorName("未分配");
+        }
 
         return dto;
     }
@@ -91,23 +92,22 @@ public class StudentService {
 
 
     @Transactional(readOnly = true)
-    public List<StudentResponseDTO> getAllStudents() {
+    public List<StudentDTO> getAllStudents() {
         return studentMapper.findAll(Collections.emptyMap()).stream()
-                .map(this::convertToResponseDto)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
 
     @Transactional(readOnly = true)
-    public Optional<StudentResponseDTO> getStudentById(Long id) {
+    public Optional<StudentDTO> getStudentById(Long id) {
         Student student = studentMapper.findById(id);
-        return Optional.ofNullable(convertToResponseDto(student));
+        return Optional.ofNullable(convertToDto(student));
     }
 
 
     @Transactional
-    // 2. 修改 createStudent 方法签名
-    public StudentResponseDTO createStudent(StudentRequestDTO studentDto) {
+    public StudentDTO createStudent(StudentDTO studentDto) {
         Student existingStudent = studentMapper.findByStudentId(studentDto.getStudentId());
         if (existingStudent != null) {
             throw new IllegalArgumentException("学号 " + studentDto.getStudentId() + " 已存在。");
@@ -120,7 +120,6 @@ public class StudentService {
         }
         student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
 
-        // 使用 DTO 中的数据填充实体
         student.setName(studentDto.getName());
         student.setGender(studentDto.getGender());
         student.setDateOfBirth(studentDto.getDateOfBirth());
@@ -143,13 +142,12 @@ public class StudentService {
         studentMapper.insert(student);
         Student createdStudent = studentMapper.findByStudentId(student.getStudentId());
         enrollmentService.assignCompulsoryCoursesForStudent(createdStudent);
-        return convertToResponseDto(createdStudent);
+        return convertToDto(createdStudent);
     }
 
 
     @Transactional
-    // 3. 修改 updateStudent 方法签名
-    public StudentResponseDTO updateStudent(Long id, StudentRequestDTO studentDetails) {
+    public StudentDTO updateStudent(Long id, StudentDTO studentDetails) {
         Student student = studentMapper.findById(id);
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生。");
@@ -164,12 +162,10 @@ public class StudentService {
                 throw new IllegalArgumentException("学号 " + studentDetails.getStudentId() + " 已被其他学生使用。");
             }
         }
-        // 管理员更新时，如果密码字段不为空，则更新密码
         if (StringUtils.hasText(studentDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
         }
 
-        // 管理员可以更新所有字段
         student.setName(studentDetails.getName());
         student.setGender(studentDetails.getGender());
         student.setDateOfBirth(studentDetails.getDateOfBirth());
@@ -199,10 +195,11 @@ public class StudentService {
                 !Objects.equals(oldSemester, student.getSemester());
 
         if (academicInfoChanged) {
-            enrollmentService.assignCompulsoryCoursesForStudent(student);
+            // ✨ 调用新的、更完整的课程同步方法
+            enrollmentService.reconcileEnrollmentsForStudent(student);
         }
 
-        return convertToResponseDto(student);
+        return convertToDto(student);
     }
 
 
@@ -216,14 +213,12 @@ public class StudentService {
     }
 
     @Transactional
-    // 4. 新增 updateStudentProfile 方法，并使其接收 StudentRequestDTO
-    public StudentResponseDTO updateStudentProfile(Long studentId, StudentRequestDTO profileDetails) {
+    public StudentDTO updateStudentProfile(Long studentId, StudentDTO profileDetails) {
         Student student = studentMapper.findById(studentId);
         if (student == null) {
             throw new ResourceNotFoundException("未找到ID为 " + studentId + " 的学生。");
         }
 
-        // 学生更新自己的信息时，只允许修改特定字段
         if (StringUtils.hasText(profileDetails.getPassword())) {
             student.setPassword(passwordEncoder.encode(profileDetails.getPassword()));
         }
@@ -238,6 +233,6 @@ public class StudentService {
             throw new RuntimeException("更新个人信息失败，请刷新后重试。");
         }
 
-        return convertToResponseDto(student);
+        return convertToDto(student);
     }
 }

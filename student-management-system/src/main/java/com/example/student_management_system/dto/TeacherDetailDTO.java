@@ -6,7 +6,8 @@ import lombok.EqualsAndHashCode;
 import java.util.List;
 
 @Data
-@EqualsAndHashCode(callSuper = true) // 确保继承的字段也被包含在 equals 和 hashCode 中
+@EqualsAndHashCode(callSuper = true)
 public class TeacherDetailDTO extends TeacherDTO {
-    private List<String> taughtCourses; // 只包含课程名称列表，保持DTO轻量
+    // ✨ 修改：将 List<String> 改为 String，以接收数据库 GROUP_CONCAT 的结果
+    private String taughtCourses;
 }

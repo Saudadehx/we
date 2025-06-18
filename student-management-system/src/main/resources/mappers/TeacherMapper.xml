@@ -9,6 +9,13 @@
         <result property="password" column="password"/>
     </resultMap>
 
+    <resultMap id="TeacherWithCoursesResultMap" type="com.example.student_management_system.dto.TeacherDetailDTO">
+        <id property="id" column="id"/>
+        <result property="teacherId" column="teacher_id"/>
+        <result property="name" column="name"/>
+        <result property="taughtCourses" column="taught_courses"/>
+    </resultMap>
+
     <select id="findByTeacherId" parameterType="string" resultMap="TeacherResultMap">
         SELECT id, teacher_id, name, password FROM teachers WHERE teacher_id = #{teacherId}
     </select>
@@ -16,9 +23,29 @@
     <select id="findById" parameterType="long" resultMap="TeacherResultMap">
         SELECT id, teacher_id, name, password FROM teachers WHERE id = #{id}
     </select>
+
     <select id="findAll" resultMap="TeacherResultMap">
         SELECT id, teacher_id, name, password FROM teachers ORDER BY id
     </select>
+
+    <select id="findAllWithCourseNames" resultMap="TeacherWithCoursesResultMap">
+        SELECT
+            t.id,
+            t.teacher_id,
+            t.name,
+            GROUP_CONCAT(cc.name SEPARATOR ', ') AS taught_courses
+        FROM
+            teachers t
+                LEFT JOIN
+            course_offerings co ON t.id = co.teacher_id
+                LEFT JOIN
+            course_catalogs cc ON co.course_catalog_id = cc.id
+        GROUP BY
+            t.id, t.name
+        ORDER BY
+            t.id
+    </select>
+
 
     <select id="findByIds" parameterType="java.util.List" resultMap="TeacherResultMap">
         SELECT id, teacher_id, name, password FROM teachers

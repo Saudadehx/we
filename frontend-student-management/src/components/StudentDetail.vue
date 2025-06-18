@@ -172,7 +172,7 @@
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value primary-text">{{ student.studentId }}</span>
                   <input v-else v-model="editableStudent.studentId" class="form-input"
-                         :disabled="viewMode === 'student'" placeholder="请输入学号" />
+                         :disabled="!isCreatingNew" placeholder="请输入学号" />
                 </div>
               </div>
               <div class="info-item">
@@ -207,13 +207,12 @@
               <div class="info-item">
                 <label class="item-label">专业</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">{{ getCurrentMajorName() || '未分配' }}</span>
+                  <span v-if="!isEditing" class="item-value">{{ student.majorName || '未分配' }}</span>
                   <template v-else>
                     <input v-if="viewMode === 'student'"
-                           :value="getCurrentMajorName() || '未分配'"
+                           :value="editableStudent.majorName || '未分配'"
                            class="form-input"
-                           disabled
-                           readonly />
+                           disabled />
                     <select v-else-if="viewMode === 'admin'"
                             v-model="editableStudent.majorId"
                             class="form-select">
@@ -232,7 +231,7 @@
                   <span v-if="!isEditing" class="item-value">
                     {{ student.academicYear ? `第 ${student.academicYear} 学年` : '未设置' }}
                   </span>
-                  <select v-else v-model="editableStudent.academicYear" class="form-select"
+                  <select v-else v-model.number="editableStudent.academicYear" class="form-select"
                           :disabled="viewMode === 'student'">
                     <option :value="null">未设置</option>
                     <option v-for="n in 4" :key="n" :value="n">第 {{ n }} 学年</option>
@@ -244,7 +243,7 @@
                 <label class="item-label">当前学期</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ formatSemester(student.semester) }}</span>
-                  <select v-else v-model="editableStudent.semester" class="form-select"
+                  <select v-else v-model.number="editableStudent.semester" class="form-select"
                           :disabled="viewMode === 'student'">
                     <option :value="null">未设置</option>
                     <option value="1">上学期</option>
@@ -327,29 +326,16 @@ onMounted(async () => {
 
 watch(() => props.student, (newStudent) => {
   if (newStudent) {
-    editableStudent.value = {
-      ...newStudent,
-      password: '',
-      majorName: newStudent.majorName
-    };
+    // ✨ 使用深拷贝复制对象，防止响应式数据污染
+    editableStudent.value = JSON.parse(JSON.stringify(newStudent));
+    // 密码字段在每次打开编辑时都应该清空
+    editableStudent.value.password = '';
     isEditing.value = isCreatingNew.value;
   }
 }, { immediate: true, deep: true });
 
-const getCurrentMajorName = () => {
-  const currentStudent = isEditing.value ? editableStudent.value : props.student;
-  // 在编辑模式下，如果 majorId 变了，我们需要从 majors 列表中找到新的名称
-  if (isEditing.value && props.viewMode === 'admin' && currentStudent.majorId) {
-    const foundMajor = majors.value.find(m => m.id === currentStudent.majorId);
-    return foundMajor ? foundMajor.name : '未知专业';
-  }
-  // 在其他情况下，直接使用 DTO 里的 majorName
-  return currentStudent?.majorName || '未分配';
-};
-
 const getPasswordPlaceholder = () => {
   if (isCreatingNew.value) return '请输入初始密码（必填）';
-  if (props.viewMode === 'admin') return '不修改请留空';
   return '不修改请留空';
 };
 
@@ -389,11 +375,8 @@ const startEditing = () => {
 };
 
 const cancelEditing = () => {
-  editableStudent.value = {
-    ...props.student,
-    password: '',
-    majorName: props.student.majorName
-  };
+  editableStudent.value = JSON.parse(JSON.stringify(props.student));
+  editableStudent.value.password = '';
   isEditing.value = false;
 };
 
@@ -401,30 +384,32 @@ const dateValidation = computed(() => {
   const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
   return {
-    // 为出生日期设定一个合理的范围
     birthDate: {
-      min: '1920-01-01', // 例如，不允许选择1920年之前的日期
-      max: today          // 最晚只能是今天
+      min: '1920-01-01',
+      max: today
     },
-    // 为入学日期设定一个合理的范围
     enrollmentDate: {
-      min: '2000-01-01', // 例如，系统只处理2000年后的入学
-      max: `${currentYear + 5}-12-31` // 例如，最多允许填到未来5年
+      min: '2000-01-01',
+      max: `${currentYear + 5}-12-31`
     }
   };
 });
 
 const handleSave = () => {
-  // 在创建新学生时，确保密码不为空
   if (isCreatingNew.value && !editableStudent.value.password) {
     showNotification('创建新学生时必须设置初始密码。', 'error');
     return;
   }
-  if (isCreatingNew.value) {
-    emit('create-student', editableStudent.value);
-  } else {
-    emit('update-student', editableStudent.value);
+  // ✨ 在更新时，如果majorId变了，我们需要手动更新majorName以便在UI上即时反馈
+  if (props.viewMode === 'admin' && editableStudent.value.majorId) {
+    const selectedMajor = majors.value.find(m => m.id === editableStudent.value.majorId);
+    if (selectedMajor) {
+      editableStudent.value.majorName = selectedMajor.name;
+    }
   }
+
+  const eventName = isCreatingNew.value ? 'create-student' : 'update-student';
+  emit(eventName, editableStudent.value);
 };
 
 const handleDelete = () => {
