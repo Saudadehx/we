@@ -78,7 +78,7 @@
     <div v-if="showOfferingModal" class="modal-overlay" @click.self="closeOfferingModal">
       <div class="modal-content stylish-modal redesigned-modal">
         <header class="modal-header-redesigned">
-          <h2>{{ isEditing ? '编辑课程安排' : '新增课程安排' }}</h2>
+          <h2>{{ isEditingOffering ? '编辑课程安排' : '新增课程安排' }}</h2>
           <p>请填写课程的具体教学安排和面向对象。</p>
         </header>
 
@@ -166,11 +166,11 @@
           </div>
 
           <div class="modal-actions">
-            <button type="button" @click="handleDeleteOffering(editableOffering.id)" class="delete-btn-redesigned" v-if="isEditing">删除</button>
+            <button type="button" @click="handleDeleteOffering(editableOffering.id)" class="delete-btn-redesigned" v-if="isEditingOffering">删除</button>
             <div style="flex-grow: 1;"></div>
             <button type="button" @click="closeOfferingModal" class="cancel-btn-redesigned">取消</button>
             <button type="submit" :disabled="isSubmitting" class="submit-btn-redesigned">
-              {{ isSubmitting ? '处理中...' : (isEditing ? '保存更新' : '确认新增') }}
+              {{ isSubmitting ? '处理中...' : (isEditingOffering ? '保存更新' : '确认新增') }}
             </button>
           </div>
         </form>
@@ -216,26 +216,35 @@ import { courseService, teacherService, majorService } from '@/services/apiServi
 import { showNotification } from '@/services/notificationStore';
 import ScheduleGrid from '@/components/ScheduleGrid.vue';
 
-// --- 状态定义 (无变化) ---
+// ✨ =======================================================
+// ✨【优化】1. 核心状态与响应式数据 (Core State & Reactive Data)
+// ✨ =======================================================
 const allOfferings = ref([]);
 const teachers = ref([]);
 const majors = ref([]);
 const catalogs = ref([]);
+
 const isOfferingsLoading = ref(true);
 const isCatalogsLoading = ref(false);
 const isSubmitting = ref(false);
-const showOfferingModal = ref(false);
-const showCatalogModal = ref(false);
-const isEditing = ref(false);
-const isEditingCatalog = ref(false);
-const getNewEditableOffering = () => ({ id: null, courseCatalogId: '', teacherId: '', academicYear: 1, semester: 1, courseDay: null, courseTime: null, associatedMajors: [] });
-const editableOffering = ref(getNewEditableOffering());
-const editableCatalog = ref(null);
+
 const hoveredOfferingId = ref(null);
 const filters = ref({ majorId: null, searchQuery: '' });
 
-// --- 计算属性 (无变化) ---
+// 课程安排模态框的状态
+const showOfferingModal = ref(false);
+const isEditingOffering = ref(false);
+const getNewEditableOffering = () => ({ id: null, courseCatalogId: '', teacherId: '', academicYear: 1, semester: 1, courseDay: null, courseTime: null, associatedMajors: [] });
+const editableOffering = ref(getNewEditableOffering());
+
+// 课程目录模态框的状态
+const showCatalogModal = ref(false);
+const isEditingCatalog = ref(false);
+const editableCatalog = ref({ id: null, name: '', courseCode: '', credits: 1.0 });
+
+// 计算属性
 const hasFiltersApplied = computed(() => filters.value.majorId !== null || filters.value.searchQuery !== '');
+
 const filteredOfferings = computed(() => {
   if (!hasFiltersApplied.value) return [];
   return allOfferings.value.filter(offering => {
@@ -250,7 +259,10 @@ const filteredOfferings = computed(() => {
   });
 });
 
-// --- 数据获取 (无变化) ---
+
+// ✨ ==========================================
+// ✨【优化】2. 数据加载 (Data Fetching)
+// ✨ ==========================================
 const fetchAllData = async () => {
   isOfferingsLoading.value = true;
   try {
@@ -264,64 +276,77 @@ const fetchAllData = async () => {
     teachers.value = teachersRes;
     majors.value = majorsRes;
     catalogs.value = catalogsRes;
-  } catch (e) { showNotification(e.message || '数据加载失败', 'error'); } finally { isOfferingsLoading.value = false; }
+  } catch (e) {
+    showNotification(e.message || '数据加载失败', 'error');
+  } finally {
+    isOfferingsLoading.value = false;
+  }
 };
+
 onMounted(fetchAllData);
 
-// --- 方法 ---
-const formatCourseTime = (d, t) => !d || !t ? '时间待定' : `周${'一二三四五六日'[d-1]}, 第${t}节`;
+
+// ✨ ========================================================
+// ✨【优化】3. 课程安排管理 (Course Offering Management)
+// ✨ ========================================================
 const openAddOfferingModal = (initialData = {}) => {
-  isEditing.value = false;
+  isEditingOffering.value = false;
   editableOffering.value = { ...getNewEditableOffering(), ...initialData };
   showOfferingModal.value = true;
 };
 
-// ======================================================
-// ============= V 最终修复：编辑功能 V ================
-// ======================================================
 const openEditOfferingModal = (offering) => {
-  isEditing.value = true;
+  isEditingOffering.value = true;
   try {
-    // 使用 JSON.parse(JSON.stringify()) 进行可靠的深拷贝
     editableOffering.value = JSON.parse(JSON.stringify(offering));
-    // 确保 associatedMajors 是一个数组，以防万一
     if (!editableOffering.value.associatedMajors) {
       editableOffering.value.associatedMajors = [];
     }
   } catch (e) {
     console.error("复制课程对象失败:", e);
     showNotification("无法编辑该课程：数据准备失败。", "error");
-    return; // 阻止弹窗打开
+    return;
   }
   showOfferingModal.value = true;
 };
-// ======================================================
-// ============= ^ 最终修复：编辑功能 ^ ================
-// ======================================================
 
-const closeOfferingModal = () => { showOfferingModal.value = false; };
-const addMajorLink = () => editableOffering.value.associatedMajors.push({ majorId: '', courseType: 'ELECTIVE' });
-const removeMajorLink = (index) => editableOffering.value.associatedMajors.splice(index, 1);
+const closeOfferingModal = () => {
+  showOfferingModal.value = false;
+};
+
+const addMajorLink = () => {
+  editableOffering.value.associatedMajors.push({ majorId: '', courseType: 'ELECTIVE' });
+};
+
+const removeMajorLink = (index) => {
+  editableOffering.value.associatedMajors.splice(index, 1);
+};
 
 const handleOfferingSubmit = async () => {
   isSubmitting.value = true;
   try {
-    const action = isEditing.value ? courseService.updateOffering(editableOffering.value.id, editableOffering.value) : courseService.createOffering(editableOffering.value);
+    const action = isEditingOffering.value
+        ? courseService.updateOffering(editableOffering.value.id, editableOffering.value)
+        : courseService.createOffering(editableOffering.value);
     await action;
-    showNotification(`课程安排${isEditing.value ? '更新' : '创建'}成功！`, 'success');
+    showNotification(`课程安排${isEditingOffering.value ? '更新' : '创建'}成功！`, 'success');
     closeOfferingModal();
     await fetchAllData();
-  } catch (e) { showNotification(e.message || '操作失败', 'error'); } finally { isSubmitting.value = false; }
+  } catch (e) {
+    showNotification(e.message || '操作失败', 'error');
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 
 const handleDeleteOffering = async (id) => {
-  if (!id) return;
-  if (!confirm('确定要删除这个课程安排吗？相关的学生选课记录也会被删除。')) return;
-  isSubmitting.value = true;
+  if (!id || !confirm('确定要删除这个课程安排吗？相关的学生选课记录也会被删除。')) return;
+
+  isSubmitting.value = true; // 在弹窗内操作时，也应有提交状态
   try {
     await courseService.deleteOffering(id);
     showNotification('删除成功！', 'success');
-    if (showOfferingModal.value) {
+    if (showOfferingModal.value && editableOffering.value.id === id) {
       closeOfferingModal();
     }
     await fetchAllData();
@@ -332,42 +357,72 @@ const handleDeleteOffering = async (id) => {
   }
 };
 
+
+// ✨ ========================================================
+// ✨【优化】4. 课程目录管理 (Course Catalog Management)
+// ✨ ========================================================
 const openCatalogManagementModal = async () => {
-  isCatalogsLoading.value = true;
   isEditingCatalog.value = false;
   showCatalogModal.value = true;
+  isCatalogsLoading.value = true;
   try {
     catalogs.value = await courseService.getAllCatalogs();
-  } catch (e) { showNotification(e.message || '获取目录失败', 'error'); } finally { isCatalogsLoading.value = false; }
+  } catch (e) {
+    showNotification(e.message || '获取目录失败', 'error');
+  } finally {
+    isCatalogsLoading.value = false;
+  }
 };
-const closeCatalogManagementModal = () => { showCatalogModal.value = false; };
+
+const closeCatalogManagementModal = () => {
+  showCatalogModal.value = false;
+};
+
 const handleAddNewCatalog = () => {
   editableCatalog.value = { id: null, name: '', courseCode: '', credits: 1.0 };
   isEditingCatalog.value = true;
 };
-const handleEditCatalog = (c) => {
-  editableCatalog.value = { ...c };
+
+const handleEditCatalog = (catalog) => {
+  editableCatalog.value = { ...catalog };
   isEditingCatalog.value = true;
 };
 
 const handleCatalogSubmit = async () => {
   isSubmitting.value = true;
   try {
-    const action = editableCatalog.value.id ? courseService.updateCatalog(editableCatalog.value.id, editableCatalog.value) : courseService.createCatalog(editableCatalog.value);
+    const action = editableCatalog.value.id
+        ? courseService.updateCatalog(editableCatalog.value.id, editableCatalog.value)
+        : courseService.createCatalog(editableCatalog.value);
     await action;
     showNotification('操作成功！', 'success');
     isEditingCatalog.value = false;
-    await fetchAllData();
-  } catch (e) { showNotification(e.message || '操作失败', 'error'); } finally { isSubmitting.value = false; }
+    await fetchAllData(); // 同步所有数据，因为 offering 模态框也依赖 catalog
+  } catch (e) {
+    showNotification(e.message || '操作失败', 'error');
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 
 const handleCatalogDelete = async (id) => {
-  if (!confirm('确定要删除吗？')) return;
+  if (!confirm('确定要删除吗？如果该课程已被使用，删除将会失败。')) return;
   try {
     await courseService.deleteCatalog(id);
     showNotification('删除成功！', 'success');
-    await fetchAllData();
-  } catch (e) { showNotification(e.message || '删除失败', 'error'); }
+    await fetchAllData(); // 同步所有数据
+  } catch (e) {
+    showNotification(e.message || '删除失败', 'error');
+  }
+};
+
+
+// ✨ ==========================================
+// ✨【优化】5. 辅助函数 (Utility Functions)
+// ✨ ==========================================
+const formatCourseTime = (day, time) => {
+  if (!day || !time) return '时间待定';
+  return `周${'一二三四五六日'[day - 1]}, 第${time}节`;
 };
 </script>
 

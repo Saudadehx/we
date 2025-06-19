@@ -171,8 +171,7 @@
                 <label class="item-label">手机号码</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.phoneNumber || '未填写' }}</span>
-                  <input v-else v-model="editableStudent.phoneNumber" class="form-input"
-                         placeholder="请输入手机号码" type="tel"/>
+                  <input v-else v-model="editableStudent.phoneNumber" class="form-input" placeholder="请输入手机号码" type="tel"/>
                 </div>
               </div>
 
@@ -180,8 +179,7 @@
                 <label class="item-label">电子邮箱</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.email || '未填写' }}</span>
-                  <input v-else type="email" v-model="editableStudent.email" class="form-input"
-                         placeholder="请输入电子邮箱"/>
+                  <input v-else type="email" v-model="editableStudent.email" class="form-input" placeholder="请输入电子邮箱"/>
                 </div>
               </div>
             </div>
@@ -220,8 +218,7 @@
                 <label class="item-label">学院</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.college || '未填写' }}</span>
-                  <input v-else v-model="editableStudent.college" class="form-input"
-                         :disabled="viewMode === 'student'" placeholder="请输入学院"/>
+                  <input v-else v-model="editableStudent.college" class="form-input" :disabled="viewMode === 'student'" placeholder="请输入学院"/>
                 </div>
               </div>
 
@@ -239,13 +236,8 @@
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.majorName || '未分配' }}</span>
                   <template v-else>
-                    <input v-if="viewMode === 'student'"
-                           :value="editableStudent.majorName || '未分配'"
-                           class="form-input"
-                           disabled />
-                    <select v-else-if="viewMode === 'admin'"
-                            v-model="editableStudent.majorId"
-                            class="form-select">
+                    <input v-if="viewMode === 'student'" :value="editableStudent.majorName || '未分配'" class="form-input" disabled />
+                    <select v-else-if="viewMode === 'admin'" v-model="editableStudent.majorId" class="form-select">
                       <option :value="null">未分配</option>
                       <option v-for="major in majors" :key="major.id" :value="major.id">
                         {{ major.name }}
@@ -258,9 +250,7 @@
               <div class="info-item">
                 <label class="item-label">当前学年</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">
-                    {{ student.academicYear ? `第 ${student.academicYear} 学年` : '未设置' }}
-                  </span>
+                  <span v-if="!isEditing" class="item-value">{{ student.academicYear ? `第 ${student.academicYear} 学年` : '未设置' }}</span>
                   <select v-else v-model.number="editableStudent.academicYear" class="form-select" :disabled="viewMode === 'student'">
                     <option :value="null">未设置</option>
                     <option v-for="n in 4" :key="n" :value="n">第 {{ n }} 学年</option>

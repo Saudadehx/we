@@ -1,9 +1,7 @@
-// frontend-student-management/src/main.js
-
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-//只保留对主样式文件 style.css 的导入
+//现在只导入主样式文件 style.css
 import './style.css'
 
 import App from './App.vue'

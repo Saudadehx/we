@@ -5,6 +5,7 @@ import com.example.student_management_system.dto.TeacherDetailDTO;
 import com.example.student_management_system.mapper.CourseOfferingMapper;
 import com.example.student_management_system.mapper.TeacherMapper;
 import com.example.student_management_system.model.Teacher;
+import org.springframework.beans.BeanUtils; // ✨ 导入 Spring 的 BeanUtils
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,14 +34,15 @@ public class TeacherService {
         }
 
         Teacher teacher = new Teacher();
-        teacher.setTeacherId(teacherDTO.getTeacherId());
-        teacher.setName(teacherDTO.getName());
+        // ✨ 使用 BeanUtils 简化属性复制
+        BeanUtils.copyProperties(teacherDTO, teacher, "id", "password"); // 忽略id和password
         teacher.setPassword(passwordEncoder.encode(teacherDTO.getPassword()));
 
         teacherMapper.insert(teacher);
+
         // 创建成功后，返回的DTO不应包含密码
         teacherDTO.setPassword(null);
-        // 【优化】通过查询返回的对象获取ID，并设置回DTO，确保DTO是完整的
+        // 通过查询返回的对象获取ID，并设置回DTO，确保DTO是完整的
         teacherDTO.setId(teacher.getId());
         return teacherDTO;
     }
@@ -61,8 +63,8 @@ public class TeacherService {
             throw new IllegalArgumentException("教师工号 " + teacherDTO.getTeacherId() + " 已被其他教师使用。");
         }
 
-        teacher.setName(teacherDTO.getName());
-        teacher.setTeacherId(teacherDTO.getTeacherId());
+        // ✨ 使用 BeanUtils 简化属性复制
+        BeanUtils.copyProperties(teacherDTO, teacher, "id", "password");
 
         // 仅当传入的密码非空时才更新密码
         if (StringUtils.hasText(teacherDTO.getPassword())) {
