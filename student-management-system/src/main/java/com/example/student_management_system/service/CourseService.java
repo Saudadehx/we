@@ -24,17 +24,19 @@ public class CourseService {
     private final TeacherMapper teacherMapper;
     private final MajorMapper majorMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final EnrollmentMapper enrollmentMapper;
 
     @Autowired
     public CourseService(CourseCatalogMapper courseCatalogMapper, CourseOfferingMapper courseOfferingMapper,
                          OfferingMajorLinkMapper offeringMajorLinkMapper, TeacherMapper teacherMapper, MajorMapper majorMapper,
-                         ApplicationEventPublisher eventPublisher) {
+                         ApplicationEventPublisher eventPublisher, EnrollmentMapper enrollmentMapper) {
         this.courseCatalogMapper = courseCatalogMapper;
         this.courseOfferingMapper = courseOfferingMapper;
         this.offeringMajorLinkMapper = offeringMajorLinkMapper;
         this.teacherMapper = teacherMapper;
         this.majorMapper = majorMapper;
         this.eventPublisher = eventPublisher;
+        this.enrollmentMapper = enrollmentMapper;
     }
 
     private CourseCatalogDTO convertToDto(CourseCatalog entity) {
@@ -96,11 +98,23 @@ public class CourseService {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的课程目录。");
         }
 
-        int usageCount = courseOfferingMapper.countByCourseCatalogId(id);
-        if (usageCount > 0) {
-            throw new IllegalArgumentException("无法删除该课程目录，因为它已被 " + usageCount + " 个课程安排所使用。");
+        // 【核心修复】将原有的检查逻辑替换为级联删除逻辑
+        // 1. 查找所有使用此课程目录的课程安排ID
+        List<Long> offeringIdsToDelete = courseOfferingMapper.findOfferingIdsByCatalogId(id);
+
+        // 2. 遍历这些ID，并对每一个课程安排执行完整的删除操作
+        for (Long offeringId : offeringIdsToDelete) {
+            log.info("级联删除：正在清理与课程安排ID {} 相关的记录...", offeringId);
+            // 2a. 删除与该安排关联的学生选课记录
+            enrollmentMapper.deleteByCourseOfferingId(offeringId);
+            // 2b. 删除与该安排关联的专业链接
+            offeringMajorLinkMapper.deleteByOfferingId(offeringId);
+            // 2c. 删除该安排本身
+            courseOfferingMapper.deleteById(offeringId);
+            log.info("级联删除：已清理课程安排ID {}", offeringId);
         }
 
+        // 3. 在所有依赖项都被清理干净后，最后删除课程目录本身
         courseCatalogMapper.deleteById(id);
     }
 
@@ -167,6 +181,8 @@ public class CourseService {
 
 
     public void deleteOffering(Long offeringId) {
+        // ✨ 关键修复：在删除课程安排之前，必须先删除所有关联的选课记录，以避免数据库外键约束冲突。
+        enrollmentMapper.deleteByCourseOfferingId(offeringId);
         offeringMajorLinkMapper.deleteByOfferingId(offeringId);
         courseOfferingMapper.deleteById(offeringId);
     }

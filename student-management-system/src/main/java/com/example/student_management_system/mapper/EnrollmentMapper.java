@@ -19,4 +19,11 @@ public interface EnrollmentMapper {
     void deleteById(Long id);
 
     Enrollment findById(Long id);
+
+    /**
+     * 【新增方法】根据课程安排ID删除所有相关的选课记录。
+     * 这是解决删除冲突的关键。
+     * @param courseOfferingId 课程安排的ID
+     */
+    void deleteByCourseOfferingId(Long courseOfferingId);
 }

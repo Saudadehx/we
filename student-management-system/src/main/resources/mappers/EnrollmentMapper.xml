@@ -34,4 +34,8 @@
         SELECT id, student_id, course_offering_id, score FROM enrollments WHERE id = #{id}
     </select>
 
+    <delete id="deleteByCourseOfferingId" parameterType="long">
+        DELETE FROM enrollments WHERE course_offering_id = #{courseOfferingId}
+    </delete>
+
 </mapper>

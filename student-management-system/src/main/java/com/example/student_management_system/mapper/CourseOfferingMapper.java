@@ -25,4 +25,12 @@ public interface CourseOfferingMapper {
     );
     // 新增方法：解除教师与课程安排的关联
     void disassociateTeacherFromOfferings(@Param("teacherId") Long teacherId);
+
+    /**
+     * 【新增方法】根据课程目录ID查找所有课程安排的ID列表。
+     * 这是实现级联删除的关键步骤。
+     * @param courseCatalogId 课程目录ID
+     * @return 相关的课程安排ID列表
+     */
+    List<Long> findOfferingIdsByCatalogId(@Param("courseCatalogId") Long courseCatalogId);
 }

@@ -111,4 +111,8 @@
         SELECT COUNT(*) FROM course_offerings WHERE course_catalog_id = #{courseCatalogId}
     </select>
 
+    <select id="findOfferingIdsByCatalogId" parameterType="long" resultType="long">
+        SELECT id FROM course_offerings WHERE course_catalog_id = #{courseCatalogId}
+    </select>
+
 </mapper>
