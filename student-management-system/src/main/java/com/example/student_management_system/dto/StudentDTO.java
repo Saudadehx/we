@@ -1,4 +1,3 @@
-// Description: 课程服务类，负责课程目录和课程安排的管理
 package com.example.student_management_system.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;

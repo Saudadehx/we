@@ -1,4 +1,3 @@
-// Description: 课程服务类，负责课程目录和课程安排的管理
 package com.example.student_management_system.exception;
 
 import com.example.student_management_system.dto.ApiResult;
@@ -19,7 +18,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ... 其他 handle 方法保持不变 ...
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResult<?> handleResourceNotFoundException(ResourceNotFoundException e) {
