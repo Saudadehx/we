@@ -53,7 +53,8 @@ public class SchedulingService {
         this.offeringClassLinkMapper = offeringClassLinkMapper; // 【代码新增】
     }
 
-    public record ScheduledUnit(CourseOffering offering, Integer dayOfWeek, Integer timeSlot, Classroom classroom) {}
+    public record ScheduledUnit(CourseOffering offering, Integer dayOfWeek, Integer timeSlot, Classroom classroom) {
+    }
 
     private int calculateFitness(final Genotype<IntegerGene> genotype, final List<List<ScheduledUnit>> scheduleSpace) {
         List<ScheduledUnit> currentSchedule = new ArrayList<>();
@@ -101,6 +102,10 @@ public class SchedulingService {
     }
 
 
+    // 这是最终的、经过两次修正后正确的版本
+
+    // 这是修复了班级关联复制问题的最终版本
+
     @Async
     @Transactional
     public void generateSchedule() {
@@ -111,73 +116,80 @@ public class SchedulingService {
         List<Classroom> availableClassrooms = classroomMapper.findAll();
         int currentAcademicYear = systemSettingService.getCurrentAcademicYear();
         int currentSemester = systemSettingService.getCurrentSemester();
-        log.info("当前排课周期: {}-{}学年, 第{}学期", currentAcademicYear, currentAcademicYear + 1, currentSemester);
+        log.info("当前排课目标周期: 第 {} 学年, 第 {} 学期", currentAcademicYear, currentSemester);
+
         if (allCatalogs.isEmpty()) {
             log.warn("课程目录为空，任务终止。");
             return;
         }
 
-        List<CourseOffering> offeringsToSchedule = new ArrayList<>();
+        // --- 第一步：按需补全课程实例 ---
         for (CourseCatalog catalog : allCatalogs) {
-            List<CourseOffering> existingOfferings = courseOfferingMapper.findByCourseCatalogId(catalog.getId());
-
-            List<CourseOffering> relevantOfferings = existingOfferings.stream()
-                    .filter(o -> Objects.nonNull(o.getAcademicYear()) && Objects.nonNull(o.getSemester()) &&
-                            o.getAcademicYear() == currentAcademicYear && o.getSemester() == currentSemester)
-                    .map(o -> courseOfferingMapper.findById(o.getId())) // 【重要】重新获取完整信息，包含associatedClasses
-                    .collect(Collectors.toList());
-
             int requiredCount = catalog.getLessonsPerWeek() != null ? catalog.getLessonsPerWeek() : 1;
-            int currentCount = relevantOfferings.size();
-            offeringsToSchedule.addAll(relevantOfferings);
 
-            // 【核心逻辑：克隆模板以补齐课时】
-            if (currentCount > 0 && currentCount < requiredCount) {
-                // 使用第一个已存在的、信息完整的课程安排作为模板
-                CourseOffering templateOffering = relevantOfferings.get(0);
+            long currentCountInTargetSemester = courseOfferingMapper.findByCourseCatalogId(catalog.getId())
+                    .stream()
+                    .filter(o -> Objects.equals(o.getAcademicYear(), currentAcademicYear) && Objects.equals(o.getSemester(), currentSemester))
+                    .count();
 
-                for (int i = 0; i < requiredCount - currentCount; i++) {
-                    // 1. 克隆课程安排基本信息
-                    CourseOffering newOffering = new CourseOffering();
-                    newOffering.setCourseCatalogId(templateOffering.getCourseCatalogId());
-                    newOffering.setTeacherId(templateOffering.getTeacherId());
-                    newOffering.setAcademicYear(templateOffering.getAcademicYear());
-                    newOffering.setSemester(templateOffering.getSemester());
-                    newOffering.setCapacity(templateOffering.getCapacity());
-                    courseOfferingMapper.insert(newOffering);
-                    log.info("为课程 '{}' 克隆了新的待排课实例，ID: {}", catalog.getName(), newOffering.getId());
+            int neededCount = requiredCount - (int) currentCountInTargetSemester;
 
-                    // 2. 克隆班级关联信息
-                    if (templateOffering.getAssociatedClasses() != null && !templateOffering.getAssociatedClasses().isEmpty()) {
-                        for (CourseOffering.ClassInfo classInfo : templateOffering.getAssociatedClasses()) {
-                            OfferingClassLink newLink = new OfferingClassLink();
-                            newLink.setCourseOfferingId(newOffering.getId());
-                            newLink.setClassId(classInfo.getClassId());
-                            newLink.setCourseType(classInfo.getCourseType());
-                            offeringClassLinkMapper.insert(newLink);
+            if (neededCount > 0) {
+                CourseOffering templateOffering = courseOfferingMapper.findByCourseCatalogId(catalog.getId())
+                        .stream()
+                        .findFirst()
+                        .map(o -> courseOfferingMapper.findById(o.getId())) // 确保加载完整信息
+                        .orElse(null);
+
+                if (templateOffering != null) {
+                    log.info("课程 '{}' 需要 {} 节课, 当前有 {} 节, 准备补足 {} 节.", catalog.getName(), requiredCount, currentCountInTargetSemester, neededCount);
+                    for (int i = 0; i < neededCount; i++) {
+                        CourseOffering newOffering = new CourseOffering();
+                        newOffering.setCourseCatalogId(templateOffering.getCourseCatalogId());
+                        newOffering.setTeacherId(templateOffering.getTeacherId());
+                        newOffering.setCapacity(templateOffering.getCapacity());
+                        newOffering.setAcademicYear(currentAcademicYear);
+                        newOffering.setSemester(currentSemester);
+                        courseOfferingMapper.insert(newOffering); // 插入以获取ID
+
+                        // 【核心修正】确保班级关联信息被完整克隆
+                        if (templateOffering.getAssociatedClasses() != null && !templateOffering.getAssociatedClasses().isEmpty()) {
+                            for (CourseOffering.ClassInfo classInfo : templateOffering.getAssociatedClasses()) {
+                                OfferingClassLink newLink = new OfferingClassLink();
+                                newLink.setCourseOfferingId(newOffering.getId());
+                                newLink.setClassId(classInfo.getClassId());
+                                newLink.setCourseType(classInfo.getCourseType());
+                                offeringClassLinkMapper.insert(newLink);
+                            }
+                            log.info("已为新课程实例 (ID: {}) 克隆了 {} 条班级关联。", newOffering.getId(), templateOffering.getAssociatedClasses().size());
+                        } else {
+                            log.warn("模板课程 (ID: {}) 没有班级关联信息，新克隆的实例 (ID: {}) 也将没有班级关联。", templateOffering.getId(), newOffering.getId());
                         }
                     }
-
-                    // 3. 将新创建的、信息完整的课程安排加入待排课列表
-                    offeringsToSchedule.add(courseOfferingMapper.findById(newOffering.getId()));
+                } else {
+                    log.warn("课程 '{}' 无法补足实例，因为在整个系统中都找不到可供参考的模板。", catalog.getName());
                 }
-            } else if (currentCount == 0 && requiredCount > 0) {
-                log.warn("课程 '{}' (ID: {}) 需要安排 {} 节课，但未找到任何可供克隆的模板课程安排。请至少手动为其创建一个完整的课程安排（包括指定教师和班级）。", catalog.getName(), catalog.getId(), requiredCount);
             }
         }
 
+        // --- 第二步：只收集当前学期内“未被安排”的课程 ---
+        List<CourseOffering> offeringsToSchedule = courseOfferingMapper.findAllWithDetails().stream()
+                .filter(o -> Objects.equals(o.getAcademicYear(), currentAcademicYear) &&
+                        Objects.equals(o.getSemester(), currentSemester) &&
+                        (o.getCourseDay() == null || o.getCourseTime() == null || o.getClassroomId() == null))
+                .collect(Collectors.toList());
+
         if (offeringsToSchedule.isEmpty()) {
-            log.warn("在当前学年学期下没有找到任何需要排课的课程。任务终止。");
+            log.info("当前目标周期内没有需要安排（时间、教室待定）的课程。任务完成。");
             return;
         }
-
         if (availableClassrooms.isEmpty()) {
             log.warn("没有可用的教室，无法进行排课。任务终止。");
             return;
         }
-
         log.info("数据准备完毕。共需安排 {} 个课时。正在构建方案空间...", offeringsToSchedule.size());
 
+        // --- 第三步：构建方案空间 ---
         final List<List<ScheduledUnit>> scheduleSpace = new ArrayList<>();
         for (CourseOffering offering : offeringsToSchedule) {
             List<ScheduledUnit> possibleUnitsForCourse = new ArrayList<>();
@@ -192,16 +204,20 @@ public class SchedulingService {
         }
 
         if (scheduleSpace.stream().anyMatch(List::isEmpty)) {
-            log.error("构建方案空间失败，存在无法安排的课程（可能因为没有可用教室）。任务终止。");
+            log.error("构建方案空间失败，存在无法安排的课程。任务终止。");
             return;
         }
 
+        // --- 第四步：正确构建基因型 ---
+        log.info("正在构建遗传算法基因型...");
         List<IntegerChromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < offeringsToSchedule.size(); i++) {
             chromosomes.add(IntegerChromosome.of(0, scheduleSpace.get(i).size() - 1));
         }
         Factory<Genotype<IntegerGene>> gtf = Genotype.of(chromosomes);
 
+        // --- 第五步：运行遗传算法引擎 ---
+        // (此部分保持不变)
         log.info("开始配置遗传算法引擎...");
         Engine<IntegerGene, Integer> engine = Engine.builder(
                         genotype -> calculateFitness(genotype, scheduleSpace),
