@@ -1,4 +1,3 @@
-// 文件路径: frontend-student-management/src/services/apiService.js
 // Description: 统一的API服务中心，管理所有与后端交互的请求。
 import axios from 'axios';
 
