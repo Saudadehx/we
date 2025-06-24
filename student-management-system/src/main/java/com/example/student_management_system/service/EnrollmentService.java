@@ -32,44 +32,36 @@ public class EnrollmentService {
     private final EnrollmentMapper enrollmentMapper;
     private final CourseOfferingMapper courseOfferingMapper;
     private final StudentMapper studentMapper;
-    private final OfferingMajorLinkMapper offeringMajorLinkMapper;
+    // 【修正】注入新的 OfferingClassLinkMapper
+    private final OfferingClassLinkMapper offeringClassLinkMapper;
     private final SystemSettingService systemSettingService;
 
     @Autowired
-    public EnrollmentService(EnrollmentMapper enrollmentMapper, CourseOfferingMapper courseOfferingMapper, StudentMapper studentMapper, OfferingMajorLinkMapper offeringMajorLinkMapper, SystemSettingService systemSettingService) {
+    // 【修正】更新构造函数，注入新的 Mapper
+    public EnrollmentService(EnrollmentMapper enrollmentMapper, CourseOfferingMapper courseOfferingMapper, StudentMapper studentMapper, OfferingClassLinkMapper offeringClassLinkMapper, SystemSettingService systemSettingService) {
         this.enrollmentMapper = enrollmentMapper;
         this.courseOfferingMapper = courseOfferingMapper;
         this.studentMapper = studentMapper;
-        this.offeringMajorLinkMapper = offeringMajorLinkMapper;
+        this.offeringClassLinkMapper = offeringClassLinkMapper;
         this.systemSettingService = systemSettingService;
     }
 
-    /**
-     * ✨ 新增方法：用于在学生学籍信息（专业/学年/学期）更新后，同步其课程注册记录。
-     * 这个方法会先清理掉旧的、不再适用的课程，然后分配新学期对应的必修课。
-     * @param student 更新信息后的学生对象
-     */
     @Transactional
     public void reconcileEnrollmentsForStudent(Student student) {
         log.info("开始为学生 {} (ID: {}) 同步课程注册记录...", student.getName(), student.getId());
 
-        // 1. 获取学生当前所有的课程注册记录
         List<Enrollment> currentEnrollments = enrollmentMapper.findByStudentId(student.getId());
 
         if (currentEnrollments != null && !currentEnrollments.isEmpty()) {
             log.debug("学生 {} 当前有 {} 条注册记录，开始清理...", student.getName(), currentEnrollments.size());
-            // 2. 遍历并移除不匹配新学籍且未出分的课程
             for (Enrollment enrollment : currentEnrollments) {
-                // 只处理没有成绩的课程
                 if (enrollment.getScore() == null) {
                     CourseOffering offering = courseOfferingMapper.findById(enrollment.getCourseOfferingId());
                     if (offering != null) {
-                        // 检查课程的学年和学期是否与学生新的学年学期匹配
                         boolean isCourseOutOfDate = !Objects.equals(offering.getAcademicYear(), student.getAcademicYear()) ||
                                 !Objects.equals(offering.getSemester(), student.getSemester());
 
                         if (isCourseOutOfDate) {
-                            // 课程已过时，删除该注册记录
                             log.info("课程 '{}' (Offering ID: {}) 与学生新的学籍 ({}-{}学年, 第{}学期) 不匹配，将自动退选。",
                                     offering.getCourseName(), offering.getId(), student.getAcademicYear(), student.getAcademicYear() + 1, student.getSemester());
                             enrollmentMapper.deleteById(enrollment.getId());
@@ -79,7 +71,6 @@ public class EnrollmentService {
             }
         }
 
-        // 3. 为学生分配新学籍对应的必修课（此方法内部会防止重复注册）
         log.info("清理完成，开始为学生 {} 分配新学期的必修课...", student.getName());
         assignCompulsoryCoursesForStudent(student);
         log.info("学生 {} 的课程同步完成。", student.getName());
@@ -96,35 +87,37 @@ public class EnrollmentService {
         CourseOffering offering = event.getCourseOffering();
         log.info("接收到课程安排更新事件，ID: {}, 名称: '{}'。准备为符合条件的学生分配必修课。", offering.getId(), offering.getCourseName());
 
-        if (offering.getAssociatedMajors() == null || offering.getAssociatedMajors().isEmpty()) {
+        // 【修正】逻辑调整为基于班级进行学生查找和课程分配
+        if (offering.getAssociatedClasses() == null || offering.getAssociatedClasses().isEmpty()) {
             return;
         }
 
-        offering.getAssociatedMajors().stream()
-                .filter(majorInfo -> "COMPULSORY".equals(majorInfo.getCourseType()))
-                .forEach(compulsoryMajor -> {
-                    List<Student> students = studentMapper.findByMajorAndAcademicInfo(
-                            compulsoryMajor.getMajorId(),
+        offering.getAssociatedClasses().stream()
+                .filter(classInfo -> "COMPULSORY".equals(classInfo.getCourseType()))
+                .forEach(compulsoryClass -> {
+                    // 根据班级ID和学籍信息查找学生
+                    List<Student> students = studentMapper.findByClassAndAcademicInfo(
+                            compulsoryClass.getClassId(),
                             offering.getAcademicYear(),
                             offering.getSemester()
                     );
 
                     if (students.isEmpty()) {
-                        log.info("专业 '{}' 在 {}-{}学年/{}学期 没有找到需要分配此必修课的学生。",
-                                compulsoryMajor.getMajorName(), offering.getAcademicYear(), offering.getAcademicYear() + 1, offering.getSemester());
+                        log.info("班级 '{}' 在 {}-{}学年/{}学期 没有找到需要分配此必修课的学生。",
+                                compulsoryClass.getClassName(), offering.getAcademicYear(), offering.getAcademicYear() + 1, offering.getSemester());
                         return;
                     }
 
                     students.forEach(student -> {
                         try {
-                            // ✨ 在独立的事务中为每个学生选课
-                            this.enrollCourseInNewTransaction(offering.getId(), student.getId());
+                            this.enrollCourseForStudentInternal(offering.getId(), student.getId());
                         } catch (Exception e) {
                             log.warn("为学生(ID:{})自动分配课程(ID:{})时发生错误: {}", student.getId(), offering.getId(), e.getMessage());
                         }
                     });
                 });
     }
+
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enrollCourseInNewTransaction(Long offeringDbId, Long studentDbId) {
@@ -135,11 +128,12 @@ public class EnrollmentService {
      */
     @Transactional
     public void assignCompulsoryCoursesForStudent(Student student) {
-        if (student == null || student.getId() == null || student.getMajorId() == null || student.getAcademicYear() == null || student.getSemester() == null) {
+        if (student == null || student.getClassId() == null || student.getAcademicYear() == null || student.getSemester() == null) {
             return;
         }
-        List<CourseOffering> compulsoryOfferings = offeringMajorLinkMapper.findCompulsoryOfferingsForMajor(
-                student.getMajorId(), student.getAcademicYear(), student.getSemester()
+        // 【修正】调用新的 Mapper 方法
+        List<CourseOffering> compulsoryOfferings = offeringClassLinkMapper.findCompulsoryOfferingsForClass(
+                student.getClassId(), student.getAcademicYear(), student.getSemester()
         );
         if (compulsoryOfferings.isEmpty()) {
             return;
@@ -168,10 +162,11 @@ public class EnrollmentService {
             throw new ResourceNotFoundException("ID为 " + offeringDbId + " 的课程安排不存在。");
         }
         Student student = studentMapper.findById(studentDbId);
-        boolean isCompulsoryForStudent = targetOffering.getAssociatedMajors().stream()
-                .anyMatch(majorInfo -> majorInfo.getMajorId().equals(student.getMajorId()) && "COMPULSORY".equals(majorInfo.getCourseType()));
+        // 【修正】判断是否为学生所在班级的必修课
+        boolean isCompulsoryForStudent = targetOffering.getAssociatedClasses().stream()
+                .anyMatch(classInfo -> classInfo.getClassId().equals(student.getClassId()) && "COMPULSORY".equals(classInfo.getCourseType()));
         if (isCompulsoryForStudent) {
-            throw new IllegalArgumentException("【" + targetOffering.getCourseName() + "】是您的专业必修课，由系统自动分配，无需手动选择。");
+            throw new IllegalArgumentException("【" + targetOffering.getCourseName() + "】是您的班级必修课，由系统自动分配，无需手动选择。");
         }
         return enrollCourseForStudentInternal(offeringDbId, studentDbId);
     }
@@ -196,10 +191,11 @@ public class EnrollmentService {
             throw new ResourceNotFoundException("该选课记录关联的课程不存在。");
         }
         Student student = studentMapper.findById(studentId);
-        boolean isCompulsoryForStudent = offering.getAssociatedMajors().stream()
-                .anyMatch(majorInfo -> majorInfo.getMajorId().equals(student.getMajorId()) && "COMPULSORY".equals(majorInfo.getCourseType()));
+        // 【修正】判断是否为学生所在班级的必修课
+        boolean isCompulsoryForStudent = offering.getAssociatedClasses().stream()
+                .anyMatch(classInfo -> classInfo.getClassId().equals(student.getClassId()) && "COMPULSORY".equals(classInfo.getCourseType()));
         if (isCompulsoryForStudent) {
-            throw new IllegalStateException("【" + offering.getCourseName() + "】是您的专业必修课，无法退选。");
+            throw new IllegalStateException("【" + offering.getCourseName() + "】是您的班级必修课，无法退选。");
         }
         if (enrollment.getScore() != null) {
             throw new IllegalStateException("该课程已有成绩，无法退选。");

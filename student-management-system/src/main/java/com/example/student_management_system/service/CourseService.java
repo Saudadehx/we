@@ -4,6 +4,7 @@ import com.example.student_management_system.dto.CourseCatalogDTO;
 import com.example.student_management_system.event.CourseOfferingUpdatedEvent;
 import com.example.student_management_system.mapper.*;
 import com.example.student_management_system.model.*;
+import com.example.student_management_system.model.Class;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -20,25 +21,29 @@ public class CourseService {
 
     private final CourseCatalogMapper courseCatalogMapper;
     private final CourseOfferingMapper courseOfferingMapper;
-    private final OfferingMajorLinkMapper offeringMajorLinkMapper;
+    // 【修改】注入新的 OfferingClassLinkMapper
+    private final OfferingClassLinkMapper offeringClassLinkMapper;
     private final TeacherMapper teacherMapper;
-    private final MajorMapper majorMapper;
+    // 【修改】注入新的 ClassMapper
+    private final ClassMapper classMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final EnrollmentMapper enrollmentMapper;
 
     @Autowired
     public CourseService(CourseCatalogMapper courseCatalogMapper, CourseOfferingMapper courseOfferingMapper,
-                         OfferingMajorLinkMapper offeringMajorLinkMapper, TeacherMapper teacherMapper, MajorMapper majorMapper,
+                         OfferingClassLinkMapper offeringClassLinkMapper, TeacherMapper teacherMapper, ClassMapper classMapper,
                          ApplicationEventPublisher eventPublisher, EnrollmentMapper enrollmentMapper) {
         this.courseCatalogMapper = courseCatalogMapper;
         this.courseOfferingMapper = courseOfferingMapper;
-        this.offeringMajorLinkMapper = offeringMajorLinkMapper;
+        this.offeringClassLinkMapper = offeringClassLinkMapper;
         this.teacherMapper = teacherMapper;
-        this.majorMapper = majorMapper;
+        this.classMapper = classMapper;
         this.eventPublisher = eventPublisher;
         this.enrollmentMapper = enrollmentMapper;
     }
 
+    // --- 课程目录管理 (无变化) ---
+    // ... (createCatalog, updateCatalog, etc. remain the same)
     private CourseCatalogDTO convertToDto(CourseCatalog entity) {
         CourseCatalogDTO dto = new CourseCatalogDTO();
         dto.setId(entity.getId());
@@ -56,9 +61,6 @@ public class CourseService {
         entity.setCredits(dto.getCredits());
         return entity;
     }
-
-
-    // --- 课程目录管理 ---
     public List<CourseCatalogDTO> getAllCatalogs() {
         return courseCatalogMapper.findAll().stream()
                 .map(this::convertToDto)
@@ -97,36 +99,24 @@ public class CourseService {
         if (courseCatalogMapper.findById(id) == null) {
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的课程目录。");
         }
-
-        // 【核心修复】将原有的检查逻辑替换为级联删除逻辑
-        // 1. 查找所有使用此课程目录的课程安排ID
         List<Long> offeringIdsToDelete = courseOfferingMapper.findOfferingIdsByCatalogId(id);
-
-        // 2. 遍历这些ID，并对每一个课程安排执行完整的删除操作
         for (Long offeringId : offeringIdsToDelete) {
             log.info("级联删除：正在清理与课程安排ID {} 相关的记录...", offeringId);
-            // 2a. 删除与该安排关联的学生选课记录
             enrollmentMapper.deleteByCourseOfferingId(offeringId);
-            // 2b. 删除与该安排关联的专业链接
-            offeringMajorLinkMapper.deleteByOfferingId(offeringId);
-            // 2c. 删除该安排本身
+            // 【修改】从 major link 改为 class link
+            offeringClassLinkMapper.deleteByOfferingId(offeringId);
             courseOfferingMapper.deleteById(offeringId);
             log.info("级联删除：已清理课程安排ID {}", offeringId);
         }
-
-        // 3. 在所有依赖项都被清理干净后，最后删除课程目录本身
         courseCatalogMapper.deleteById(id);
     }
 
-
     // --- 课程安排管理 ---
 
-    // 【优化】: 直接返回MyBatis处理好的结果，不再需要在Java中手动去重合并
     public List<CourseOffering> getAllOfferings() {
         return courseOfferingMapper.findAllWithDetails();
     }
 
-    // 【优化】: 直接返回MyBatis处理好的结果
     @Transactional(readOnly = true)
     public List<CourseOffering> findOfferingsByTeacherId(Long teacherId) {
         return courseOfferingMapper.findOfferingsByTeacherId(teacherId);
@@ -137,17 +127,17 @@ public class CourseService {
         checkForConflicts(offering);
         courseOfferingMapper.insert(offering);
 
-        if (offering.getAssociatedMajors() != null && !offering.getAssociatedMajors().isEmpty()) {
-            for (CourseOffering.MajorInfo majorInfo : offering.getAssociatedMajors()) {
-                OfferingMajorLink link = new OfferingMajorLink();
+        // 【修改】处理 associatedClasses
+        if (offering.getAssociatedClasses() != null && !offering.getAssociatedClasses().isEmpty()) {
+            for (CourseOffering.ClassInfo classInfo : offering.getAssociatedClasses()) {
+                OfferingClassLink link = new OfferingClassLink();
                 link.setCourseOfferingId(offering.getId());
-                link.setMajorId(majorInfo.getMajorId());
-                link.setCourseType(majorInfo.getCourseType());
-                offeringMajorLinkMapper.insert(link);
+                link.setClassId(classInfo.getClassId());
+                link.setCourseType(classInfo.getCourseType());
+                offeringClassLinkMapper.insert(link);
             }
         }
 
-        // 【优化】: 创建后，重新从数据库获取完整的、聚合好的课程信息用于发布事件
         CourseOffering createdOfferingWithDetails = courseOfferingMapper.findById(offering.getId());
         eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, createdOfferingWithDetails));
         return createdOfferingWithDetails;
@@ -162,18 +152,18 @@ public class CourseService {
         checkForConflicts(offering);
         courseOfferingMapper.update(offering);
 
-        offeringMajorLinkMapper.deleteByOfferingId(offering.getId());
-        if (offering.getAssociatedMajors() != null && !offering.getAssociatedMajors().isEmpty()) {
-            for (CourseOffering.MajorInfo majorInfo : offering.getAssociatedMajors()) {
-                OfferingMajorLink link = new OfferingMajorLink();
+        // 【修改】先删后增，更新 associatedClasses
+        offeringClassLinkMapper.deleteByOfferingId(offering.getId());
+        if (offering.getAssociatedClasses() != null && !offering.getAssociatedClasses().isEmpty()) {
+            for (CourseOffering.ClassInfo classInfo : offering.getAssociatedClasses()) {
+                OfferingClassLink link = new OfferingClassLink();
                 link.setCourseOfferingId(offering.getId());
-                link.setMajorId(majorInfo.getMajorId());
-                link.setCourseType(majorInfo.getCourseType());
-                offeringMajorLinkMapper.insert(link);
+                link.setClassId(classInfo.getClassId());
+                link.setCourseType(classInfo.getCourseType());
+                offeringClassLinkMapper.insert(link);
             }
         }
 
-        // 【优化】: 更新后，同样重新获取完整信息再发布事件
         CourseOffering updatedOfferingWithDetails = courseOfferingMapper.findById(offering.getId());
         eventPublisher.publishEvent(new CourseOfferingUpdatedEvent(this, updatedOfferingWithDetails));
         return updatedOfferingWithDetails;
@@ -181,17 +171,19 @@ public class CourseService {
 
 
     public void deleteOffering(Long offeringId) {
-        // ✨ 关键修复：在删除课程安排之前，必须先删除所有关联的选课记录，以避免数据库外键约束冲突。
         enrollmentMapper.deleteByCourseOfferingId(offeringId);
-        offeringMajorLinkMapper.deleteByOfferingId(offeringId);
+        // 【修改】删除 class link
+        offeringClassLinkMapper.deleteByOfferingId(offeringId);
         courseOfferingMapper.deleteById(offeringId);
     }
 
+    // 【修改】冲突检查逻辑
     private void checkForConflicts(CourseOffering offering) {
         if (offering.getCourseDay() == null || offering.getCourseTime() == null) {
             return;
         }
 
+        // 教师时间冲突检查 (不变)
         if (offering.getTeacherId() != null) {
             List<CourseOffering> teacherConflicts = courseOfferingMapper.findOfferingsByTeacherAndTimetable(
                     offering.getTeacherId(), offering.getAcademicYear(), offering.getSemester(),
@@ -202,14 +194,15 @@ public class CourseService {
             }
         }
 
-        if (offering.getAssociatedMajors() != null) {
-            for (CourseOffering.MajorInfo majorInfo : offering.getAssociatedMajors()) {
-                List<CourseOffering> majorConflicts = offeringMajorLinkMapper.findOfferingsByMajorAndTimetable(
-                        majorInfo.getMajorId(), offering.getAcademicYear(), offering.getSemester(),
+        // 【修改】班级时间冲突检查
+        if (offering.getAssociatedClasses() != null) {
+            for (CourseOffering.ClassInfo classInfo : offering.getAssociatedClasses()) {
+                List<CourseOffering> classConflicts = offeringClassLinkMapper.findOfferingsByClassAndTimetable(
+                        classInfo.getClassId(), offering.getAcademicYear(), offering.getSemester(),
                         offering.getCourseDay(), offering.getCourseTime(), offering.getId());
-                if (!majorConflicts.isEmpty()) {
-                    Major major = majorMapper.findById(majorInfo.getMajorId());
-                    throw new IllegalArgumentException("专业冲突: " + major.getName() + " 在该时间已有其他课程。");
+                if (!classConflicts.isEmpty()) {
+                    Class cls = classMapper.findById(classInfo.getClassId());
+                    throw new IllegalArgumentException("班级冲突: " + cls.getName() + " 在该时间已有其他课程。");
                 }
             }
         }

@@ -31,9 +31,9 @@
         s.id, s.password, s.name, s.gender, s.date_of_birth, s.ethnicity, s.native_place, s.political_status,
         s.phone_number, s.email, s.student_id, s.college, s.enrollment_date, s.student_status, s.gpa, s.photo_url,
         s.major_id, s.academic_year, s.semester,
-        s.class_id,       -- ✨【新增】选择 class_id
-        c.name as class_name, -- ✨【新增】通过JOIN获取班级名
-        m.name as major_name  -- ✨【新增】通过JOIN获取专业名
+        s.class_id,
+        c.name as class_name,
+        m.name as major_name
     </sql>
 
     <sql id="FROM_TABLES_WITH_JOINS">
@@ -121,4 +121,13 @@
         AND s.academic_year = #{academicYear}
         AND s.semester = #{semester}
     </select>
+
+    <select id="findByClassAndAcademicInfo" resultMap="StudentResultMap">
+        SELECT <include refid="Base_Column_List" />
+        <include refid="FROM_TABLES_WITH_JOINS"/>
+        WHERE s.class_id = #{classId}
+        AND s.academic_year = #{academicYear}
+        AND s.semester = #{semester}
+    </select>
+
 </mapper>

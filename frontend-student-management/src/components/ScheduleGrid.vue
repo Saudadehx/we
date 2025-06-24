@@ -27,9 +27,9 @@
             <div class="course-details">
               <strong>{{ offering.courseName }}</strong>
               <span>{{ offering.teacherName }}</span>
-              <div class="major-tags-container" v-if="offering.associatedMajors && offering.associatedMajors.length > 0">
-                <span v-for="majorInfo in offering.associatedMajors" :key="majorInfo.majorId" class="major-tag">
-                  {{ majorInfo.majorName }}
+              <div class="major-tags-container" v-if="offering.associatedClasses && offering.associatedClasses.length > 0">
+                <span v-for="classInfo in offering.associatedClasses" :key="classInfo.classId" class="major-tag">
+                  {{ classInfo.className }}
                 </span>
               </div>
             </div>
@@ -45,7 +45,7 @@ import { computed } from 'vue';
 
 const props = defineProps({
   offerings: { type: Array, default: () => [] },
-  majors: { type: Array, default: () => [] },
+  classes: { type: Array, default: () => [] },
   hoveredOfferingId: { type: [Number, null], default: null }
 });
 
@@ -59,32 +59,24 @@ const timeSlots = [
 ];
 
 const hexToRgba = (hex, alpha = 1) => {
-  if (!/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
-    return `rgba(217, 217, 217, ${alpha})`;
-  }
-  let c = hex.substring(1).split('');
-  if (c.length === 3) {
-    c = [c[0], c[0], c[1], c[1], c[2], c[2]];
-  }
-  c = '0x' + c.join('');
-  const r = (c >> 16) & 255;
-  const g = (c >> 8) & 255;
-  const b = c & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+      ? `rgba(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}, ${alpha})`
+      : `rgba(0, 0, 0, ${alpha})`;
 };
 
-const majorColors = computed(() => {
+const classColors = computed(() => {
   const colors = [ '#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a' ];
   const colorMap = new Map();
-  props.majors.forEach((major, index) => {
-    colorMap.set(major.id, colors[index % colors.length]);
+  props.classes.forEach((cls, index) => {
+    colorMap.set(cls.id, colors[index % colors.length]);
   });
   return colorMap;
 });
 
 const getOfferingColor = (offering) => {
-  if (offering.associatedMajors && offering.associatedMajors.length > 0) {
-    return majorColors.value.get(offering.associatedMajors[0].majorId) || '#d9d9d9';
+  if (offering.associatedClasses && offering.associatedClasses.length > 0) {
+    return classColors.value.get(offering.associatedClasses[0].classId) || '#d9d9d9';
   }
   return '#d9d9d9';
 };
@@ -107,6 +99,12 @@ const onOfferingClick = (offering) => emit('offering-click', offering);
 </script>
 
 <style scoped>
+.schedule-grid-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
 .timetable {
   display: grid;
   grid-template-columns: 90px repeat(7, 1fr);
@@ -115,7 +113,8 @@ const onOfferingClick = (offering) => emit('offering-click', offering);
   border: 1px solid #dee2e6;
   border-radius: 8px;
   overflow: hidden;
-  min-width: 1100px;
+  width: 100%;
+  min-width: 700px; /* 减小最小宽度，确保在较小屏幕上也能完整显示 */
   font-size: 14px;
 }
 
@@ -159,7 +158,6 @@ const onOfferingClick = (offering) => emit('offering-click', offering);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease-in-out;
-  /* 边框样式分开写，颜色通过内联样式绑定 */
   border-left-width: 4px;
   border-left-style: solid;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -175,4 +173,48 @@ const onOfferingClick = (offering) => emit('offering-click', offering);
 .course-details span { font-size: 0.8em; color: #495057; }
 .major-tags-container { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
 .major-tag { background-color: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 4px; font-size: 0.75em; }
+
+/* 响应式设计 - 在较小屏幕上调整字体大小和间距 */
+@media (max-width: 1200px) {
+  .timetable {
+    font-size: 12px;
+  }
+  .day-header {
+    padding: 8px 2px;
+    font-size: 0.9em;
+  }
+  .time-header {
+    padding: 6px 2px;
+  }
+  .class-cell {
+    min-height: 90px;
+    padding: 2px;
+  }
+  .course-item {
+    padding: 6px;
+  }
+  .course-details strong {
+    font-size: 0.8em;
+  }
+  .course-details span {
+    font-size: 0.75em;
+  }
+}
+
+@media (max-width: 900px) {
+  .timetable {
+    font-size: 11px;
+    min-width: 600px;
+  }
+  .day-header {
+    padding: 6px 1px;
+    font-size: 0.8em;
+  }
+  .class-cell {
+    min-height: 80px;
+  }
+  .course-item {
+    padding: 4px;
+  }
+}
 </style>

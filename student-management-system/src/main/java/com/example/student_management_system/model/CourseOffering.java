@@ -13,17 +13,21 @@ public class CourseOffering {
     private Integer courseDay;
     private Integer courseTime;
 
-    // --- 用于DTO和业务逻辑的临时字段 ---
+    // --- 【修改】用于DTO和业务逻辑的临时字段 ---
     private transient String courseName;
     private transient String courseCode;
     private transient Double credits;
     private transient String teacherName;
-    private transient List<MajorInfo> associatedMajors;
+    // 【修改】从 MajorInfo 列表变更为 ClassInfo 列表
+    private transient List<ClassInfo> associatedClasses;
 
+    /**
+     * 【新增】内部类，用于承载关联的班级信息
+     */
     @Data
-    public static class MajorInfo {
-        private Long majorId;
-        private String majorName;
+    public static class ClassInfo {
+        private Long classId;
+        private String className;
         private String courseType; // COMPULSORY or ELECTIVE
     }
 }

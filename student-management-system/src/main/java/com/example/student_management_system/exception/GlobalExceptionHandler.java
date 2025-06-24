@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -26,18 +25,25 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.CONFLICT) // 409 Conflict, 通常用于数据冲突，如“名称已存在”
     public ApiResult<?> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("无效参数: {}", e.getMessage());
         return ApiResult.failure(409, e.getMessage());
     }
 
-
     /**
-     * 【重大优化】处理 @Valid 注解校验失败的异常，返回结构化的错误信息
+     * 【新增】处理业务逻辑中不允许的操作，如“必修课无法退课”。
      * @param e 异常对象
-     * @return 包含错误字段映射的API结果
+     * @return 包含具体错误信息的API结果
      */
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST) // 400 Bad Request, 表示一个不合法的操作请求
+    public ApiResult<?> handleIllegalStateException(IllegalStateException e) {
+        log.warn("非法状态/操作: {}", e.getMessage());
+        // 直接将业务层抛出的具体错误信息返回给前端
+        return ApiResult.failure(400, e.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResult<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException e) {
@@ -48,8 +54,6 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         log.warn("参数校验失败: {}", errors);
-
-        // 返回一个通用的主消息，并将详细的字段错误放在 data 字段中
         return ApiResult.failure(400, "提交的数据有误，请检查所有字段。", errors);
     }
 

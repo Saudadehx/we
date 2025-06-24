@@ -4,11 +4,10 @@ import com.example.student_management_system.model.Student;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
-import java.util.Map; // 导入 Map
+import java.util.Map;
 
 @Mapper
 public interface StudentMapper {
-    // 【修改】让 findAll 方法接收一个Map类型的参数
     List<Student> findAll(Map<String, Object> params);
     Student findById(Long id);
     List<Student> findByIds(List<Long> ids);
@@ -17,4 +16,5 @@ public interface StudentMapper {
     int update(Student student);
     void deleteById(Long id);
     List<Student> findByMajorAndAcademicInfo(@Param("majorId") Long majorId, @Param("academicYear") Integer academicYear, @Param("semester") Integer semester);
+    List<Student> findByClassAndAcademicInfo(@Param("classId") Long classId, @Param("academicYear") Integer academicYear, @Param("semester") Integer semester);
 }

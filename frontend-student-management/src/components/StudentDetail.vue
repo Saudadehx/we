@@ -4,23 +4,21 @@
       <div class="header-content">
         <div class="header-info">
           <h1 class="page-title">
-            {{ isCreatingNew ? '新增学生档案' : (viewMode === 'admin' ? editableStudent.name : '我的个人档案') }}
+            {{ pageTitle }}
           </h1>
           <p class="page-subtitle">
-            {{ isCreatingNew ? '请完善以下学生信息' :
-              (viewMode === 'admin' ? `学号：${editableStudent.studentId}` :
-                  `${student.name} (${student.studentId})`) }}
+            {{ pageSubtitle }}
           </p>
 
           <div class="status-badges" v-if="!isCreatingNew">
-            <span class="status-badge" :class="getStatusClass(student.studentStatus)">
+            <span class="status-badge" :class="statusClass">
               {{ student.studentStatus }}
             </span>
             <span class="info-badge" v-if="student.academicYear">
               第{{ student.academicYear }}学年
             </span>
             <span class="info-badge" v-if="student.semester">
-              {{ formatSemester(student.semester) }}
+              {{ formattedSemester }}
             </span>
           </div>
         </div>
@@ -45,7 +43,7 @@
             <svg v-else class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
             </svg>
-            <span>{{ isSaving ? '保存中...' : (isCreatingNew ? '创建档案' : '保存更改') }}</span>
+            <span>{{ saveButtonText }}</span>
           </button>
           <button v-if="isEditing && !isCreatingNew" class="action-btn cancel-btn" @click="cancelEditing">
             <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -117,7 +115,7 @@
               <div class="info-item">
                 <label class="item-label">出生日期</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">{{ formatDate(student.dateOfBirth) }}</span>
+                  <span v-if="!isEditing" class="item-value">{{ formattedBirthDate }}</span>
                   <input v-else type="date" v-model="editableStudent.dateOfBirth" class="form-input" :class="{'is-invalid': errors.dateOfBirth}" :disabled="viewMode === 'student'" :min="dateValidation.birthDate.min" :max="dateValidation.birthDate.max"/>
                   <span v-if="errors.dateOfBirth" class="error-message">{{ errors.dateOfBirth }}</span>
                 </div>
@@ -209,7 +207,7 @@
               <div class="info-item">
                 <label class="item-label">入学日期</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">{{ formatDate(student.enrollmentDate) }}</span>
+                  <span v-if="!isEditing" class="item-value">{{ formattedEnrollmentDate }}</span>
                   <input v-else type="date" v-model="editableStudent.enrollmentDate" class="form-input" :disabled="viewMode === 'student'" :min="dateValidation.enrollmentDate.min" :max="dateValidation.enrollmentDate.max"/>
                 </div>
               </div>
@@ -227,13 +225,20 @@
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.className || '未分配' }}</span>
                   <template v-else>
-                    <select v-model="editableStudent.classId" class="form-select" :disabled="!editableStudent.majorId || filteredClasses.length === 0">
-                      <option :value="null">请先选择专业</option>
-                      <option v-for="cls in filteredClasses" :key="cls.id" :value="cls.id">
-                        {{ cls.name }}
-                      </option>
-                    </select>
-                    <p v-if="!editableStudent.majorId" class="field-hint">请先在上方选择一个专业，才能分配班级。</p>
+                    <input v-if="viewMode === 'student'"
+                           :value="student.className || '未分配'"
+                           class="form-input"
+                           disabled
+                           readonly />
+                    <template v-else-if="viewMode === 'admin'">
+                      <select v-model="editableStudent.classId" class="form-select" :disabled="classSelectDisabled">
+                        <option :value="null">请先选择专业</option>
+                        <option v-for="cls in filteredClasses" :key="cls.id" :value="cls.id">
+                          {{ cls.name }}
+                        </option>
+                      </select>
+                      <p v-if="showClassHint" class="field-hint">请先在上方选择一个专业，才能分配班级。</p>
+                    </template>
                   </template>
                 </div>
               </div>
@@ -257,7 +262,7 @@
               <div class="info-item">
                 <label class="item-label">当前学年</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">{{ student.academicYear ? `第 ${student.academicYear} 学年` : '未设置' }}</span>
+                  <span v-if="!isEditing" class="item-value">{{ formattedAcademicYear }}</span>
                   <select v-else v-model.number="editableStudent.academicYear" class="form-select" :disabled="viewMode === 'student'">
                     <option :value="null">未设置</option>
                     <option v-for="n in 4" :key="n" :value="n">第 {{ n }} 学年</option>
@@ -268,7 +273,7 @@
               <div class="info-item">
                 <label class="item-label">当前学期</label>
                 <div class="item-content">
-                  <span v-if="!isEditing" class="item-value">{{ formatSemester(student.semester) }}</span>
+                  <span v-if="!isEditing" class="item-value">{{ formattedCurrentSemester }}</span>
                   <select v-else v-model.number="editableStudent.semester" class="form-select" :disabled="viewMode === 'student'">
                     <option :value="null">未设置</option>
                     <option value="1">上学期</option>
@@ -306,13 +311,13 @@
             <div class="form-grid">
               <div class="info-item full-width">
                 <label class="item-label">
-                  {{ isCreatingNew ? '设置初始密码' : (viewMode === 'admin' ? '重置密码' : '新密码') }}
+                  {{ passwordLabel }}
                 </label>
                 <div class="item-content">
-                  <input type="password" v-model="editableStudent.password" class="form-input" :class="{'is-invalid': errors.password}" :placeholder="getPasswordPlaceholder()"/>
+                  <input type="password" v-model="editableStudent.password" class="form-input" :class="{'is-invalid': errors.password}" :placeholder="passwordPlaceholder"/>
                   <span v-if="errors.password" class="error-message">{{ errors.password }}</span>
                   <p v-else class="field-hint">
-                    {{ getPasswordHint() }}
+                    {{ passwordHint }}
                   </p>
                 </div>
               </div>
@@ -325,9 +330,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, shallowRef } from 'vue';
 import { showNotification } from '@/services/notificationStore.js';
-import { classService, majorService } from '@/services/apiService'; // ✨ 引入 classService
+import { classService, majorService } from '@/services/apiService';
 
 const props = defineProps({
   student: { type: Object, required: true },
@@ -336,53 +341,95 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['create-student', 'update-student', 'delete-student']);
-const allClasses = ref([]); // ✨ 新增：存储所有班级
-const majors = ref([]);
+
+// Use shallowRef for data that doesn't need deep reactivity
+const allClasses = shallowRef([]);
+const majors = shallowRef([]);
 const isEditing = ref(false);
 const editableStudent = ref({});
 const errors = ref({});
 
+// Cached computed values
 const isCreatingNew = computed(() => !props.student.id);
 
-onMounted(async () => {
-  if (props.viewMode === 'admin') {
-    try {
-      // ✨ 同时获取专业和班级列表
-      const [majorsRes, classesRes] = await Promise.all([
-        majorService.getAll(),
-        classService.getAll()
-      ]);
-      majors.value = majorsRes;
-      allClasses.value = classesRes;
-    } catch (error) {
-      showNotification('加载专业或班级列表失败', 'error');
-    }
-  }
+// Memoized computed properties for formatting
+const pageTitle = computed(() =>
+    isCreatingNew.value ? '新增学生档案' :
+        (props.viewMode === 'admin' ? editableStudent.value.name : '我的个人档案')
+);
+
+const pageSubtitle = computed(() =>
+    isCreatingNew.value ? '请完善以下学生信息' :
+        (props.viewMode === 'admin' ? `学号：${editableStudent.value.studentId}` :
+            `${props.student.name} (${props.student.studentId})`)
+);
+
+const statusClass = computed(() => {
+  const statusMap = {
+    '休学': 'status-warning',
+    '毕业': 'status-success',
+    '退学': 'status-danger'
+  };
+  return statusMap[props.student.studentStatus] || '';
 });
 
-watch(() => props.student, (newStudent) => {
-  if (newStudent) {
-    editableStudent.value = JSON.parse(JSON.stringify(newStudent));
-    editableStudent.value.password = '';
-    isEditing.value = isCreatingNew.value;
-    errors.value = {};
-  }
-}, { immediate: true, deep: true });
+const formattedSemester = computed(() => {
+  return props.student.semester === 1 ? '上学期' :
+      props.student.semester === 2 ? '下学期' : '未设置';
+});
 
-const getPasswordPlaceholder = () => isCreatingNew.value ? '请输入初始密码（必填）' : '不修改请留空';
-const getPasswordHint = () => isCreatingNew.value ? '建议使用包含字母和数字的组合密码。' : (props.viewMode === 'admin' ? '输入新密码将重置该学生的登录密码。' : '输入新密码以修改当前密码。');
-const formatDate = (d) => d ? new Date(d).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : '未填写';
-const formatSemester = (s) => s === 1 ? '上学期' : (s === 2 ? '下学期' : '未设置');
-const getStatusClass = (s) => ({ '休学': 'status-warning', '毕业': 'status-success', '退学': 'status-danger' }[s] || '');
+const formattedBirthDate = computed(() => {
+  return props.student.dateOfBirth ?
+      new Date(props.student.dateOfBirth).toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }) : '未填写';
+});
 
-const startEditing = () => { isEditing.value = true; };
+const formattedEnrollmentDate = computed(() => {
+  return props.student.enrollmentDate ?
+      new Date(props.student.enrollmentDate).toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }) : '未填写';
+});
 
-const cancelEditing = () => {
-  editableStudent.value = JSON.parse(JSON.stringify(props.student));
-  editableStudent.value.password = '';
-  isEditing.value = false;
-  errors.value = {};
-};
+const formattedAcademicYear = computed(() => {
+  return props.student.academicYear ? `第 ${props.student.academicYear} 学年` : '未设置';
+});
+
+const formattedCurrentSemester = computed(() => {
+  return props.student.semester === 1 ? '上学期' :
+      props.student.semester === 2 ? '下学期' : '未设置';
+});
+
+const saveButtonText = computed(() =>
+    props.isSaving ? '保存中...' :
+        (isCreatingNew.value ? '创建档案' : '保存更改')
+);
+
+const passwordLabel = computed(() =>
+    isCreatingNew.value ? '设置初始密码' :
+        (props.viewMode === 'admin' ? '重置密码' : '新密码')
+);
+
+const passwordPlaceholder = computed(() =>
+    isCreatingNew.value ? '请输入初始密码（必填）' : '不修改请留空'
+);
+
+const passwordHint = computed(() =>
+    isCreatingNew.value ? '建议使用包含字母和数字的组合密码。' :
+        (props.viewMode === 'admin' ? '输入新密码将重置该学生的登录密码。' : '输入新密码以修改当前密码。')
+);
+
+// Optimized class-related computed properties
+const classSelectDisabled = computed(() =>
+    !editableStudent.value.majorId || filteredClasses.value.length === 0
+);
+
+const showClassHint = computed(() => !editableStudent.value.majorId);
 
 const filteredClasses = computed(() => {
   if (!editableStudent.value.majorId || !allClasses.value.length) {
@@ -391,6 +438,7 @@ const filteredClasses = computed(() => {
   return allClasses.value.filter(cls => cls.majorId === editableStudent.value.majorId);
 });
 
+// Cached date validation to prevent recalculation
 const dateValidation = computed(() => {
   const today = new Date().toISOString().split('T')[0];
   const currentYear = new Date().getFullYear();
@@ -400,24 +448,71 @@ const dateValidation = computed(() => {
   };
 });
 
+// Optimized data loading
+let dataLoaded = false;
+onMounted(async () => {
+  if (props.viewMode === 'admin' && !dataLoaded) {
+    try {
+      const [majorsRes, classesRes] = await Promise.all([
+        majorService.getAll(),
+        classService.getAll()
+      ]);
+      majors.value = majorsRes;
+      allClasses.value = classesRes;
+      dataLoaded = true;
+    } catch (error) {
+      showNotification('加载专业或班级列表失败', 'error');
+    }
+  }
+});
+
+// Optimized watcher with immediate flag optimization
+watch(() => props.student, (newStudent) => {
+  if (newStudent) {
+    // Use Object.assign for better performance than JSON stringify/parse
+    editableStudent.value = Object.assign({}, newStudent, { password: '' });
+    isEditing.value = isCreatingNew.value;
+    errors.value = {};
+  }
+}, { immediate: true });
+
+// Optimized validation function
 const validateForm = () => {
   const newErrors = {};
   const { name, studentId, gender, dateOfBirth, className, password } = editableStudent.value;
 
-  if (!name) newErrors.name = '姓名不能为空';
-  else if (name.length < 2 || name.length > 50) newErrors.name = '姓名长度必须在2到50之间';
+  if (!name) {
+    newErrors.name = '姓名不能为空';
+  } else if (name.length < 2 || name.length > 50) {
+    newErrors.name = '姓名长度必须在2到50之间';
+  }
 
-  if (!studentId) newErrors.studentId = '学号不能为空';
-  else if (studentId.length < 4 || studentId.length > 20) newErrors.studentId = '学号长度必须在4到20之间';
+  if (!studentId) {
+    newErrors.studentId = '学号不能为空';
+  } else if (studentId.length < 4 || studentId.length > 20) {
+    newErrors.studentId = '学号长度必须在4到20之间';
+  }
 
   if (!gender) newErrors.gender = '性别不能为空';
   if (!dateOfBirth) newErrors.dateOfBirth = '出生日期不能为空';
   if (!className) newErrors.className = '班级名称不能为空';
 
-  if (isCreatingNew.value && !password) newErrors.password = '创建学生时必须设置初始密码';
+  if (isCreatingNew.value && !password) {
+    newErrors.password = '创建学生时必须设置初始密码';
+  }
 
   errors.value = newErrors;
   return Object.keys(newErrors).length === 0;
+};
+
+const startEditing = () => {
+  isEditing.value = true;
+};
+
+const cancelEditing = () => {
+  editableStudent.value = Object.assign({}, props.student, { password: '' });
+  isEditing.value = false;
+  errors.value = {};
 };
 
 const handleSave = async () => {
