@@ -24,11 +24,6 @@ public interface CourseOfferingMapper {
             @Param("excludeOfferingId") Long excludeOfferingId
     );
 
-    /**
-     * 【新增的方法声明】
-     * 根据教室和时间安排查找课程，用于冲突检测。
-     * 这就是解决您编译错误的关键所在。
-     */
     List<CourseOffering> findOfferingsByClassroomAndTimetable(
             @Param("classroomId") Long classroomId,
             @Param("academicYear") int academicYear,
@@ -41,4 +36,20 @@ public interface CourseOfferingMapper {
     void disassociateTeacherFromOfferings(@Param("teacherId") Long teacherId);
 
     List<Long> findOfferingIdsByCatalogId(@Param("courseCatalogId") Long courseCatalogId);
+
+    List<CourseOffering> findByCourseCatalogId(@Param("courseCatalogId") Long courseCatalogId);
+
+    /**
+     * 【代码新增】专用于更新排课结果的精准方法
+     * @param id 要更新的课程安排ID
+     * @param courseDay 新的星期几
+     * @param courseTime 新的时间段
+     * @param classroomId 新的教室ID
+     */
+    void updateSchedule(
+            @Param("id") Long id,
+            @Param("courseDay") Integer courseDay,
+            @Param("courseTime") Integer courseTime,
+            @Param("classroomId") Long classroomId
+    );
 }

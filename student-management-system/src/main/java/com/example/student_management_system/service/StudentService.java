@@ -20,27 +20,27 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-public class StudentService {
+public class StudentService { // 学生服务类
 
-    private final StudentMapper studentMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final MajorMapper majorMapper;
-    private final EnrollmentService enrollmentService;
+    private final StudentMapper studentMapper; // 学生数据访问层
+    private final PasswordEncoder passwordEncoder; // 密码加密器
+    private final MajorMapper majorMapper;// 专业数据访问层
+    private final EnrollmentService enrollmentService;// 选课服务
 
     @Autowired
     public StudentService(StudentMapper studentMapper, PasswordEncoder passwordEncoder, MajorMapper majorMapper, EnrollmentService enrollmentService) {
-        this.studentMapper = studentMapper;
-        this.passwordEncoder = passwordEncoder;
-        this.majorMapper = majorMapper;
-        this.enrollmentService = enrollmentService;
+        this.studentMapper = studentMapper;// 学生数据访问层
+        this.passwordEncoder = passwordEncoder;// 密码加密器
+        this.majorMapper = majorMapper;// 专业数据访问层
+        this.enrollmentService = enrollmentService;// 选课服务
     }
 
     // --- 数据转换辅助方法 ---
 
-    private StudentDTO convertToDto(Student student) {
-        if (student == null) return null;
+    private StudentDTO convertToDto(Student student) {// 将 Student 实体转换为 StudentDTO
+        if (student == null) return null;// 如果学生对象为空，直接返回 null
 
-        StudentDTO dto = new StudentDTO();
+        StudentDTO dto = new StudentDTO();// 创建一个新的 StudentDTO 对象
         BeanUtils.copyProperties(student, dto); // student 中已经有了 className 和 majorName
 
         // 如果连接查询没有查出名称，则提供默认值
@@ -50,19 +50,19 @@ public class StudentService {
         } else if (student.getMajorName() == null) {
             dto.setMajorName("未分配");
         }
-
+        // 如果 className 为空，可能是因为没有连接查询到班级名称
         if (student.getClassId() != null && student.getClassName() == null) {
             // 这里可以添加一个 classMapper.findById() 来作为备用方案
             dto.setClassName("未知班级");
         } else if (student.getClassName() == null) {
             dto.setClassName("未分配");
         }
-
+        // 设置学术信息
         return dto;
     }
-
+    // 将 StudentDTO 转换为 Student 实体
     private void updateEntityFromDto(Student student, StudentDTO dto) {
-        // ✨【修改】忽略 className，因为它不是 Student 实体的直接字段了
+        // 只复制允许修改的字段，避免覆盖敏感信息
         BeanUtils.copyProperties(dto, student, "id", "password", "majorName", "className");
     }
 
@@ -127,40 +127,41 @@ public class StudentService {
 
     @Transactional
     public StudentDTO updateStudent(Long id, StudentDTO studentDetails) {
-        Student student = studentMapper.findById(id);
-        if (student == null) {
+        // 首先检查学生是否存在
+        Student student = studentMapper.findById(id); // 根据ID查询学生
+        if (student == null) { // 如果未找到学生，抛出异常
             throw new ResourceNotFoundException("未找到ID为 " + id + " 的学生。");
         }
-
-        Long oldMajorId = student.getMajorId();
-        Integer oldAcademicYear = student.getAcademicYear();
-        Integer oldSemester = student.getSemester();
-
-        if (studentDetails.getStudentId() != null && !studentDetails.getStudentId().equals(student.getStudentId())) {
-            if (studentMapper.findByStudentId(studentDetails.getStudentId()) != null) {
+        // 记录旧的学术信息
+        Long oldMajorId = student.getMajorId(); // 记录旧的专业ID
+        Integer oldAcademicYear = student.getAcademicYear(); // 记录旧的学年
+        Integer oldSemester = student.getSemester();  // 记录旧的学期
+        // 检查学号是否被修改
+        if (studentDetails.getStudentId() != null && !studentDetails.getStudentId().equals(student.getStudentId())) {// 如果学号被修改
+            if (studentMapper.findByStudentId(studentDetails.getStudentId()) != null) { // 检查新学号是否已存在
                 throw new IllegalArgumentException("学号 " + studentDetails.getStudentId() + " 已被其他学生使用。");
             }
         }
-
-        updateEntityFromDto(student, studentDetails);
-
-        if (StringUtils.hasText(studentDetails.getPassword())) {
-            student.setPassword(passwordEncoder.encode(studentDetails.getPassword()));
+        // 更新学生实体的属性
+        updateEntityFromDto(student, studentDetails); // 更新学生实体的属性
+        // 如果提供了新密码，则进行加密
+        if (StringUtils.hasText(studentDetails.getPassword())) { // 如果提供了新密码，则进行加密
+            student.setPassword(passwordEncoder.encode(studentDetails.getPassword())); // 加密新密码
         }
-
-        int affectedRows = studentMapper.update(student);
-        if (affectedRows == 0) {
+        // 更新学生信息
+        int affectedRows = studentMapper.update(student); // 更新学生信息
+        if (affectedRows == 0) { // 如果没有行被更新，说明数据可能已被其他人修改
             throw new RuntimeException("更新学生信息失败，数据可能已被他人修改，请刷新后重试。");
         }
-
+        // 在更新后检查学术信息是否有变更
         boolean academicInfoChanged = !Objects.equals(oldMajorId, student.getMajorId()) ||
                 !Objects.equals(oldAcademicYear, student.getAcademicYear()) ||
                 !Objects.equals(oldSemester, student.getSemester());
-
+        // 如果学术信息有变更，则重新分配必修课
         if (academicInfoChanged) {
             enrollmentService.reconcileEnrollmentsForStudent(student);
         }
-
+        // 返回更新后的学生DTO
         return convertToDto(student);
     }
 

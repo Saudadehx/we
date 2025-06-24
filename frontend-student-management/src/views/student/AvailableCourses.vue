@@ -82,11 +82,11 @@ import { enrollmentService, studentService } from '@/services/apiService';
 import { apiService as systemSettingApiService } from '@/services/systemSettingService';
 import { showNotification } from '@/services/notificationStore';
 
-const availableOfferings = ref([]);
-const myEnrollments = ref([]);
-const isLoading = ref(true);
-const isEnrolling = ref(false);
-const isWithdrawing = ref(false);
+const availableOfferings = ref([]); // 存储可选课程列表
+const myEnrollments = ref([]); // 存储已选课程列表
+const isLoading = ref(true);  // 是否正在加载数据
+const isEnrolling = ref(false);  // 是否正在选课
+const isWithdrawing = ref(false);  // 是否正在退课
 const isSelectionOpen = ref(false);
 const studentProfile = ref(null);
 

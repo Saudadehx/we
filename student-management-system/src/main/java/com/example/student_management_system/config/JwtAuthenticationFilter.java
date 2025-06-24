@@ -30,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+        // 从请求头中获取Authorization字段
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
@@ -44,11 +45,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
             if (jwtService.isTokenValid(jwt, userDetails)) {
+                // 创建一个新的认证令牌
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
+                // 设置认证令牌的详细信息
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );

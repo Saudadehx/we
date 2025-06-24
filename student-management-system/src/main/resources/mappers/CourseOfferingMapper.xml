@@ -51,6 +51,10 @@
         ORDER BY co.academic_year, co.semester, co.id, c.id
     </select>
 
+    <select id="findByCourseCatalogId" parameterType="long" resultType="com.example.student_management_system.model.CourseOffering">
+        SELECT * FROM course_offerings WHERE course_catalog_id = #{courseCatalogId}
+    </select>
+
     <select id="findOfferingsByTeacherId" parameterType="long" resultMap="OfferingWithDetailsResultMap">
         <include refid="SELECT_ALL_FIELDS_WITH_JOINS"/>
         WHERE co.teacher_id = #{teacherId}
@@ -71,6 +75,15 @@
             course_day = #{courseDay},
             course_time = #{courseTime},
             capacity = #{capacity},
+            classroom_id = #{classroomId}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateSchedule">
+        UPDATE course_offerings
+        SET
+            course_day = #{courseDay},
+            course_time = #{courseTime},
             classroom_id = #{classroomId}
         WHERE id = #{id}
     </update>

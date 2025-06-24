@@ -16,42 +16,41 @@ import java.util.Objects;
 
 public class Student implements UserDetails {
 
-    private Long id;
-    private String password;
-    @NotBlank(message = "姓名不能为空")
+    private Long id; // 学生ID，主键
+    private String password;// 密码，存储加密后的值
+    @NotBlank(message = "姓名不能为空")// 姓名不能为空
     @Size(min = 2, max = 50, message = "姓名长度必须在2到50之间")
-    private String name;
+    private String name; // 姓名
     @NotBlank(message = "性别不能为空")
-    private String gender;
+    private String gender;// 性别
     @NotNull(message = "出生日期不能为空")
     @Past(message = "出生日期必须是过去的时间")
-    private LocalDate dateOfBirth;
-    private String ethnicity;
-    private String nativePlace;
-    private String politicalStatus;
-    private String phoneNumber;
-    private String email;
+    private LocalDate dateOfBirth;// 出生日期
+    private String ethnicity;// 民族
+    private String nativePlace;// 籍贯
+    private String politicalStatus;// 政治面貌
+    private String phoneNumber;// 手机号码
+    private String email;// 电子邮箱
     @NotBlank(message = "学号不能为空")
     @Size(min = 4, max = 20, message = "学号长度必须在4到20之间")
-    private String studentId;
-    private String college;
+    private String studentId;// 学号，唯一标识学生
+    private String college;// 学院名称
 
-    // ✨【修改】不再是数据库的直接字段，而是用于接收JOIN查询结果
-    private String className;
+    private String className;// 班级名称
 
-    private LocalDate enrollmentDate;
-    private String studentStatus;
-    private Double gpa;
-    private String photoUrl;
+    private LocalDate enrollmentDate; // 入学日期
+    private String studentStatus;  // 学生状态（在读、休学、毕业等）
+    private Double gpa;// 平均绩点
+    private String photoUrl;// 学生照片URL
 
-    private Long majorId;
-    private Long classId; // ✨【新增】用于存储班级外键
+    private Long majorId; // 专业ID
+    private Long classId; // 班级ID
 
-    private Integer academicYear;
-    private Integer semester;
+    private Integer academicYear;// 学年
+    private Integer semester;// 学期
 
     // 用于连接查询时显示专业名称
-    private transient String majorName;
+    private transient String majorName;// 专业名称
 
 
     // --- 构造函数 ---
@@ -59,10 +58,10 @@ public class Student implements UserDetails {
     }
 
     public Student(String studentId, String name, String gender, LocalDate dateOfBirth) {
-        this.studentId = studentId;
-        this.name = name;
-        this.gender = gender;
-        this.dateOfBirth = dateOfBirth;
+        this.studentId = studentId;// 学号
+        this.name = name;// 姓名
+        this.gender = gender;// 性别
+        this.dateOfBirth = dateOfBirth;// 出生日期
     }
 
     // --- 手动实现的 Getters 和 Setters ---

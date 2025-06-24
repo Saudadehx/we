@@ -109,14 +109,14 @@ const handleCreateStudent = async (formData) => {
   }
 };
 
-const handleUpdateStudent = async (formData) => {
-  isSaving.value = true;
+const handleUpdateStudent = async (formData) => { //  // 使用 formData.id 来更新现有学生信息
+  isSaving.value = true; //  // 开始保存状态
   try {
-    const updatedStudent = await studentService.updateStudent(formData.id, formData);
-    showNotification('学生信息更新成功！', 'success');
+    const updatedStudent = await studentService.updateStudent(formData.id, formData);//  // 使用 ID 更新
+    showNotification('学生信息更新成功！', 'success');//  // 显示成功通知
     // 更新左侧列表和右侧详情
-    await fetchStudents();
-    selectedStudent.value = updatedStudent;
+    await fetchStudents();//  // 确保左侧列表数据是最新的
+    selectedStudent.value = updatedStudent;//  // 更新右侧详情
   } catch (error) {
     showNotification(`保存失败: ${error.message}`, 'error');
   } finally {

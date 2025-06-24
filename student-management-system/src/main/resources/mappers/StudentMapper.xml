@@ -4,9 +4,9 @@
 
     <resultMap id="StudentResultMap" type="com.example.student_management_system.model.Student">
         <id property="id" column="id"/>
-        <result property="password" column="password"/>
-        <result property="name" column="name"/>
-        <result property="gender" column="gender"/>
+        <result property="password" column="password"/> <!-- 密码字段 -->
+        <result property="name" column="name"/> <!-- 姓名字段 -->
+        <result property="gender" column="gender"/> <!-- 性别字段 -->
         <result property="dateOfBirth" column="date_of_birth"/>
         <result property="ethnicity" column="ethnicity"/>
         <result property="nativePlace" column="native_place"/>
@@ -27,7 +27,7 @@
         <result property="majorName" column="major_name"/>
     </resultMap>
 
-    <sql id="Base_Column_List">
+    <sql id="Base_Column_List"> <!-- 基础列列表 -->
         s.id, s.password, s.name, s.gender, s.date_of_birth, s.ethnicity, s.native_place, s.political_status,
         s.phone_number, s.email, s.student_id, s.college, s.enrollment_date, s.student_status, s.gpa, s.photo_url,
         s.major_id, s.academic_year, s.semester,
@@ -36,13 +36,13 @@
         m.name as major_name
     </sql>
 
-    <sql id="FROM_TABLES_WITH_JOINS">
+    <sql id="FROM_TABLES_WITH_JOINS"> <!-- 从学生表、专业表和班级表中选择 -->
         FROM students s
         LEFT JOIN majors m ON s.major_id = m.id
         LEFT JOIN classes c ON s.class_id = c.id
     </sql>
 
-    <select id="findAll" parameterType="map" resultMap="StudentResultMap">
+    <select id="findAll" parameterType="map" resultMap="StudentResultMap"> <!-- 查询所有学生 -->
         SELECT <include refid="Base_Column_List" />
         <include refid="FROM_TABLES_WITH_JOINS"/>
         <where>
@@ -56,35 +56,35 @@
         ORDER BY s.student_id
     </select>
 
-    <select id="findById" parameterType="long" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" />
-        <include refid="FROM_TABLES_WITH_JOINS"/>
+    <select id="findById" parameterType="long" resultMap="StudentResultMap"> <!-- 根据ID查询学生 -->
+        SELECT <include refid="Base_Column_List" /> <!-- 基础列列表 -->
+        <include refid="FROM_TABLES_WITH_JOINS"/> <!-- 从学生表、专业表和班级表中选择 -->
         WHERE s.id = #{id}
     </select>
 
-    <select id="findByIds" parameterType="java.util.List" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" />
-        <include refid="FROM_TABLES_WITH_JOINS"/>
+    <select id="findByIds" parameterType="java.util.List" resultMap="StudentResultMap"> <!-- 根据多个ID查询学生 -->
+        SELECT <include refid="Base_Column_List" /> <!-- 基础列列表 -->
+        <include refid="FROM_TABLES_WITH_JOINS"/> <!-- 从学生表、专业表和班级表中选择 -->
         WHERE s.id IN
         <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
             #{item}
         </foreach>
     </select>
 
-    <select id="findByStudentId" parameterType="string" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" />
-        <include refid="FROM_TABLES_WITH_JOINS"/>
+    <select id="findByStudentId" parameterType="string" resultMap="StudentResultMap"> <!-- 根据学号查询学生 -->
+        SELECT <include refid="Base_Column_List" /> <!-- 基础列列表 -->
+        <include refid="FROM_TABLES_WITH_JOINS"/> <!-- 从学生表、专业表和班级表中选择 -->
         WHERE s.student_id = #{studentId}
     </select>
 
-    <insert id="insert" parameterType="com.example.student_management_system.model.Student">
+    <insert id="insert" parameterType="com.example.student_management_system.model.Student"> <!-- 插入新学生记录 -->
         INSERT INTO students (student_id, password, name, gender, date_of_birth, ethnicity, native_place,
                               political_status, phone_number, email, college, class_id, enrollment_date, student_status, gpa, photo_url, major_id, academic_year, semester)
         VALUES (#{studentId}, #{password}, #{name}, #{gender}, #{dateOfBirth}, #{ethnicity}, #{nativePlace},
                 #{politicalStatus}, #{phoneNumber}, #{email}, #{college}, #{classId}, #{enrollmentDate}, #{studentStatus}, #{gpa}, #{photoUrl}, #{majorId}, #{academicYear}, #{semester})
     </insert>
 
-    <update id="update" parameterType="com.example.student_management_system.model.Student">
+    <update id="update" parameterType="com.example.student_management_system.model.Student"> <!-- 更新学生记录 -->
         UPDATE students
         <set>
             <if test="studentId != null and studentId != ''">student_id = #{studentId},</if>
@@ -110,11 +110,11 @@
         WHERE id = #{id}
     </update>
 
-    <delete id="deleteById" parameterType="long">
+    <delete id="deleteById" parameterType="long"> <!-- 根据ID删除学生记录 -->
         DELETE FROM students WHERE id = #{id}
     </delete>
 
-    <select id="findByMajorAndAcademicInfo" resultMap="StudentResultMap">
+    <select id="findByMajorAndAcademicInfo" resultMap="StudentResultMap"> <!-- 根据专业和学年学期查询学生 -->
         SELECT <include refid="Base_Column_List" />
         <include refid="FROM_TABLES_WITH_JOINS"/>
         WHERE s.major_id = #{majorId}
@@ -122,7 +122,7 @@
         AND s.semester = #{semester}
     </select>
 
-    <select id="findByClassAndAcademicInfo" resultMap="StudentResultMap">
+    <select id="findByClassAndAcademicInfo" resultMap="StudentResultMap"> <!-- 根据班级和学年学期查询学生 -->
         SELECT <include refid="Base_Column_List" />
         <include refid="FROM_TABLES_WITH_JOINS"/>
         WHERE s.class_id = #{classId}

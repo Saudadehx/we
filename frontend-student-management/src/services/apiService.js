@@ -1,3 +1,4 @@
+// 文件路径: frontend-student-management/src/services/apiService.js
 // Description: 课程服务类，负责课程目录和课程安排的管理
 import axios from 'axios';
 // 这里使用了axios库来处理HTTP请求
@@ -105,13 +106,10 @@ export const classroomService = {
 };
 
 export const schedulingService = {
-    /**
-     * 触发后台开始执行一键排课任务
-     */
     generateSchedule: () => apiClient.post('/scheduling/generate'),
 };
 
-export const studentService = { // 学生相关的服务
+export const studentService = {
     getStats: () => apiClient.get('/students/stats'),
     getAllStudents: () => apiClient.get('/students'),
     getStudentById: (id) => apiClient.get(`/students/${id}`),
@@ -121,4 +119,20 @@ export const studentService = { // 学生相关的服务
     getMyProfile: () => apiClient.get('/my-profile'),
     updateMyProfile: (profileData) => apiClient.put('/my-profile', profileData),
     getMyCoursesAndGrades: () => apiClient.get('/students/me/enrollments')
+};
+
+// 【代码修改】扩展 systemSettingService
+export const systemSettingService = {
+    getCourseSelectionStatus() {
+        return apiClient.get('/settings/course-selection-status');
+    },
+    setCourseSelectionStatus(isOpen) {
+        return apiClient.post('/settings/course-selection-status', { isOpen });
+    },
+    getSchedulingSettings() {
+        return apiClient.get('/settings/scheduling');
+    },
+    updateSchedulingSettings(settings) {
+        return apiClient.post('/settings/scheduling', settings);
+    }
 };

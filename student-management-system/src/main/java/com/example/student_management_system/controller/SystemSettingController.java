@@ -33,4 +33,24 @@ public class SystemSettingController {
         systemSettingService.setCourseSelectionOpen(isOpen);
         return ApiResult.success(Map.of("isOpen", isOpen));
     }
+
+    // 【代码新增】获取排课设置的接口
+    @GetMapping("/scheduling")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResult<Map<String, Integer>> getSchedulingSettings() {
+        return ApiResult.success(systemSettingService.getSchedulingSettings());
+    }
+
+    // 【代码新增】更新排课设置的接口
+    @PostMapping("/scheduling")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResult<?> updateSchedulingSettings(@RequestBody Map<String, Integer> settings) {
+        Integer year = settings.get("year");
+        Integer semester = settings.get("semester");
+        if (year == null || semester == null) {
+            return ApiResult.failure(400, "请求体必须包含 'year' 和 'semester' 字段。");
+        }
+        systemSettingService.updateSchedulingSettings(year, semester);
+        return ApiResult.success();
+    }
 }
