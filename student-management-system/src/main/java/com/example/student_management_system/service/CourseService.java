@@ -77,7 +77,9 @@ public class CourseService {
         }
         CourseCatalog catalog = convertToEntity(catalogDto);
         courseCatalogMapper.insert(catalog);
-        return convertToDto(catalog);
+
+        catalogDto.setId(catalog.getId());
+        return catalogDto;
     }
 
     public CourseCatalogDTO updateCatalog(Long id, CourseCatalogDTO catalogDto) {

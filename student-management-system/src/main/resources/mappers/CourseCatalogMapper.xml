@@ -7,10 +7,11 @@
         <result property="courseCode" column="course_code"/>
         <result property="name" column="name"/>
         <result property="credits" column="credits"/>
+        <result property="lessonsPerWeek" column="lessons_per_week"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, course_code, name, credits
+        id, course_code, name, credits, lessons_per_week
     </sql>
 
     <select id="findById" parameterType="long" resultMap="CourseCatalogResultMap">
@@ -32,7 +33,11 @@
 
     <update id="update" parameterType="com.example.student_management_system.model.CourseCatalog">
         UPDATE course_catalogs
-        SET course_code = #{courseCode}, name = #{name}, credits = #{credits}, lessons_per_week = #{lessonsPerWeek}
+        SET
+            course_code = #{courseCode},
+            name = #{name},
+            credits = #{credits},
+            lessons_per_week = #{lessonsPerWeek} -- 【修复】添加了此行
         WHERE id = #{id}
     </update>
 

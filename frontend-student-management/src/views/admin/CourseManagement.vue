@@ -4,9 +4,8 @@
       <div class="left-panel">
         <div class="panel-header">
           <h1>课程管理</h1>
-          <button @click="openAddOfferingModal({})" class="add-btn">新增安排</button>
+          <button @click="offeringModal.openAdd({})" class="add-btn">新增安排</button>
         </div>
-
         <div class="panel-content">
           <div class="filter-card">
             <div class="filter-item">
@@ -28,7 +27,6 @@
               </select>
             </div>
           </div>
-
           <div class="list-card">
             <div v-if="isOfferingsLoading" class="loading-placeholder"><span>加载中...</span></div>
             <ul v-else-if="filteredOfferings.length > 0" class="offering-list">
@@ -45,7 +43,7 @@
                   <span class="course-meta">{{ offering.teacherName }} | {{ offering.classroomName || '教室待定' }} | {{ formatCourseTime(offering.courseDay, offering.courseTime) }}</span>
                 </div>
                 <div class="item-actions">
-                  <button class="action-btn-sm edit" @click="openEditOfferingModal(offering)">编辑</button>
+                  <button class="action-btn-sm edit" @click="offeringModal.openEdit(offering)">编辑</button>
                   <button class="action-btn-sm delete" @click="handleDeleteOffering(offering.id)">删除</button>
                 </div>
               </li>
@@ -53,27 +51,13 @@
             <div v-else class="loading-placeholder">
               <span>{{ hasFiltersApplied ? '无匹配课程' : '请先筛选课程' }}</span>
             </div>
-
             <div v-if="totalPages > 1" class="pagination-controls">
-              <button
-                  :disabled="currentPage === 1"
-                  @click="currentPage = Math.max(1, currentPage - 1)"
-                  class="pagination-btn"
-              >
-                上一页
-              </button>
+              <button :disabled="currentPage === 1" @click="currentPage--" class="pagination-btn">上一页</button>
               <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
-              <button
-                  :disabled="currentPage === totalPages"
-                  @click="currentPage = Math.min(totalPages, currentPage + 1)"
-                  class="pagination-btn"
-              >
-                下一页
-              </button>
+              <button :disabled="currentPage === totalPages" @click="currentPage++" class="pagination-btn">下一页</button>
             </div>
           </div>
         </div>
-
         <div class="panel-footer">
           <button @click="openCatalogManagementModal" class="footer-btn">管理课程基础目录</button>
         </div>
@@ -86,8 +70,8 @@
               :offerings="filteredOfferings"
               :classes="classes"
               :hovered-offering-id="hoveredOfferingId"
-              @cell-click="data => openAddOfferingModal(data)"
-              @offering-click="openEditOfferingModal"
+              @cell-click="data => offeringModal.openAdd(data)"
+              @offering-click="offeringModal.openEdit"
               @offering-hover="id => hoveredOfferingId = id"
           />
         </div>
@@ -100,13 +84,12 @@
       </div>
     </div>
 
-    <div v-if="showOfferingModal" class="modal-overlay" @click.self="closeOfferingModal">
+    <div v-if="offeringModal.state.show" class="modal-overlay" @click.self="offeringModal.close">
       <div class="modal-content stylish-modal redesigned-modal">
         <header class="modal-header-redesigned">
-          <h2>{{ isEditingOffering ? '编辑课程安排' : '新增课程安排' }}</h2>
+          <h2>{{ offeringModal.state.isEditing ? '编辑课程安排' : '新增课程安排' }}</h2>
           <p>请填写课程的具体教学安排和面向对象。</p>
         </header>
-
         <form @submit.prevent="handleOfferingSubmit">
           <div class="modal-body-redesigned">
             <fieldset class="form-section">
@@ -114,14 +97,14 @@
               <div class="form-row">
                 <div class="form-group flex-grow">
                   <label>基础课程</label>
-                  <select v-model="editableOffering.courseCatalogId" required>
+                  <select v-model="offeringModal.state.editable.courseCatalogId" required>
                     <option disabled value="">请选择一个基础课程</option>
                     <option v-for="c in catalogs" :key="c.id" :value="c.id">{{c.name}} ({{c.courseCode}})</option>
                   </select>
                 </div>
                 <div class="form-group flex-grow">
                   <label>授课教师</label>
-                  <select v-model="editableOffering.teacherId" required>
+                  <select v-model="offeringModal.state.editable.teacherId" required>
                     <option disabled value="">请选择一位授课教师</option>
                     <option v-for="t in teachers" :key="t.id" :value="t.id">{{t.name}} ({{t.teacherId}})</option>
                   </select>
@@ -130,11 +113,11 @@
               <div class="form-row" style="margin-top: 16px;">
                 <div class="form-group">
                   <label>课程容量</label>
-                  <input type="number" min="0" v-model.number="editableOffering.capacity" placeholder="0表示不限" class="form-input">
+                  <input type="number" min="0" v-model.number="offeringModal.state.editable.capacity" placeholder="0表示不限" class="form-input">
                 </div>
                 <div class="form-group flex-grow">
                   <label>上课教室</label>
-                  <select v-model="editableOffering.classroomId" class="form-select">
+                  <select v-model="offeringModal.state.editable.classroomId" class="form-select">
                     <option :value="null">待定 / 无需教室</option>
                     <option v-for="room in classrooms" :key="room.id" :value="room.id">
                       {{ room.name }} ({{ room.type }}, 容量: {{ room.capacity }})
@@ -143,187 +126,94 @@
                 </div>
               </div>
             </fieldset>
-
             <fieldset class="form-section">
               <legend>时间计划</legend>
               <div class="form-row">
-                <div class="form-group">
-                  <label>开设学年</label>
-                  <select v-model.number="editableOffering.academicYear" required>
-                    <option v-for="n in 4" :key="n" :value="n">第 {{n}} 学年</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>开设学期</label>
-                  <select v-model.number="editableOffering.semester" required>
-                    <option value="1">上学期</option>
-                    <option value="2">下学期</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>上课日</label>
-                  <select v-model.number="editableOffering.courseDay">
-                    <option :value="null">未安排</option>
-                    <option v-for="d in 7" :key="d" :value="d">星期{{'一二三四五六日'[d-1]}}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>上课时段</label>
-                  <select v-model.number="editableOffering.courseTime">
-                    <option :value="null">未安排</option>
-                    <option v-for="t in 5" :key="t" :value="t">第 {{t}} 大节</option>
-                  </select>
-                </div>
+                <div class="form-group"><label>开设学年</label><select v-model.number="offeringModal.state.editable.academicYear" required><option v-for="n in 4" :key="n" :value="n">第 {{n}} 学年</option></select></div>
+                <div class="form-group"><label>开设学期</label><select v-model.number="offeringModal.state.editable.semester" required><option value="1">上学期</option><option value="2">下学期</option></select></div>
+                <div class="form-group"><label>上课日</label><select v-model.number="offeringModal.state.editable.courseDay"><option :value="null">未安排</option><option v-for="d in 7" :key="d" :value="d">星期{{'一二三四五六日'[d-1]}}</option></select></div>
+                <div class="form-group"><label>上课时段</label><select v-model.number="offeringModal.state.editable.courseTime"><option :value="null">未安排</option><option v-for="t in 5" :key="t" :value="t">第 {{t}} 大节</option></select></div>
               </div>
             </fieldset>
-
             <fieldset class="form-section">
               <legend>教学对象 (用于指定必修/选修)</legend>
               <div class="major-links-container">
-                <div v-for="(link, index) in editableOffering.associatedClasses" :key="index" class="major-link-item-redesigned">
+                <div v-for="(link, index) in offeringModal.state.editable.associatedClasses" :key="index" class="major-link-item-redesigned">
                   <div class="form-group flex-grow">
                     <select v-model="link.classId" class="major-select">
                       <option disabled value="">选择班级</option>
                       <optgroup v-for="major in majors" :key="major.id" :label="major.name">
-                        <option v-for="cls in getClassesByMajorId(major.id)" :key="cls.id" :value="cls.id">
-                          {{ cls.name }}
-                        </option>
+                        <option v-for="cls in getClassesByMajorId(major.id)" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
                       </optgroup>
                     </select>
                   </div>
-                  <div class="form-group">
-                    <select v-model="link.courseType" class="type-select">
-                      <option value="COMPULSORY">必修</option>
-                      <option value="ELECTIVE">选修</option>
-                    </select>
-                  </div>
-                  <button type="button" @click="removeClassLink(index)" class="remove-link-btn-redesigned">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
+                  <div class="form-group"><select v-model="link.courseType" class="type-select"><option value="COMPULSORY">必修</option><option value="ELECTIVE">选修</option></select></div>
+                  <button type="button" @click="offeringModal.state.editable.associatedClasses.splice(index, 1)" class="remove-link-btn-redesigned"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
               </div>
-              <button type="button" @click="addClassLink" class="add-link-btn-redesigned">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>添加班级关联</span>
-              </button>
+              <button type="button" @click="offeringModal.state.editable.associatedClasses.push({ classId: '', courseType: 'ELECTIVE' })" class="add-link-btn-redesigned"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>添加班级关联</span></button>
             </fieldset>
           </div>
-
           <div class="modal-actions">
-            <button type="button" @click="handleDeleteOffering(editableOffering.id)" class="delete-btn-redesigned" v-if="isEditingOffering">删除</button>
+            <button type="button" @click="handleDeleteOffering(offeringModal.state.editable.id)" class="delete-btn-redesigned" v-if="offeringModal.state.isEditing">删除</button>
             <div style="flex-grow: 1;"></div>
-            <button type="button" @click="closeOfferingModal" class="cancel-btn-redesigned">取消</button>
-            <button type="submit" :disabled="isSubmitting" class="submit-btn-redesigned">
-              {{ isSubmitting ? '处理中...' : (isEditingOffering ? '保存更新' : '确认新增') }}
-            </button>
+            <button type="button" @click="offeringModal.close" class="cancel-btn-redesigned">取消</button>
+            <button type="submit" :disabled="isSubmitting" class="submit-btn-redesigned">{{ isSubmitting ? '处理中...' : (offeringModal.state.isEditing ? '保存更新' : '确认新增') }}</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div v-if="showCatalogModal" class="modal-overlay" @click.self="closeCatalogManagementModal">
+    <div v-if="catalogModal.state.show" class="modal-overlay" @click.self="catalogModal.close">
       <div class="modal-content catalog-modal">
-        <div v-if="isEditingCatalog" class="catalog-edit-view">
+        <div v-if="catalogModal.state.isEditing" class="catalog-edit-view">
           <div class="catalog-edit-header">
-            <button @click="isEditingCatalog = false" class="back-btn">返回列表</button>
-            <h2>{{ editableCatalog.id ? '编辑课程' : '新增课程' }}</h2>
+            <button @click="catalogModal.state.isEditing = false" class="back-btn">返回列表</button>
+            <h2>{{ catalogModal.state.editable.id ? '编辑课程' : '新增课程' }}</h2>
           </div>
-
           <form @submit.prevent="handleCatalogSubmit" class="catalog-form">
             <div class="catalog-form-grid">
-              <div class="form-group">
-                <label>课程名称 <span class="required">*</span></label>
-                <input v-model="editableCatalog.name" required placeholder="请输入课程名称">
-              </div>
-              <div class="form-group">
-                <label>课程代码 <span class="required">*</span></label>
-                <input v-model="editableCatalog.courseCode" required placeholder="请输入课程代码">
-              </div>
-              <div class="form-group">
-                <label>学分 <span class="required">*</span></label>
-                <input v-model.number="editableCatalog.credits" type="number" step="0.5" min="0.5" required placeholder="请输入学分">
-              </div>
-              <div class="form-group">
-                <label>每周节数 <span class="required">*</span></label>
-                <input v-model.number="editableCatalog.lessonsPerWeek" type="number" min="1" required placeholder="例如: 1">
-              </div>
+              <div class="form-group"><label>课程名称 <span class="required">*</span></label><input v-model="catalogModal.state.editable.name" required placeholder="请输入课程名称"></div>
+              <div class="form-group"><label>课程代码 <span class="required">*</span></label><input v-model="catalogModal.state.editable.courseCode" required placeholder="请输入课程代码"></div>
+              <div class="form-group"><label>学分 <span class="required">*</span></label><input v-model.number="catalogModal.state.editable.credits" type="number" step="0.5" min="0.5" required placeholder="请输入学分"></div>
+              <div class="form-group"><label>每周节数 <span class="required">*</span></label><input v-model.number="catalogModal.state.editable.lessonsPerWeek" type="number" min="1" required placeholder="例如: 1"></div>
             </div>
-
             <div class="catalog-form-actions">
-              <button type="button" @click="isEditingCatalog = false" class="cancel-btn">取消</button>
-              <button type="submit" :disabled="isSubmitting" class="submit-btn">
-                {{ isSubmitting ? '提交中...' : '提交' }}
-              </button>
+              <button type="button" @click="catalogModal.state.isEditing = false" class="cancel-btn">取消</button>
+              <button type="submit" :disabled="isSubmitting" class="submit-btn">{{ isSubmitting ? '提交中...' : '提交' }}</button>
             </div>
           </form>
         </div>
-
         <div v-else class="catalog-list-view">
           <div class="catalog-header">
             <h2>课程基础目录管理</h2>
             <div class="catalog-header-actions">
-              <input
-                  type="text"
-                  v-model="catalogSearchQuery"
-                  placeholder="搜索课程名称或代码..."
-                  class="catalog-search-input"
-              >
+              <input type="text" v-model="catalogSearchQuery" placeholder="搜索课程名称或代码..." class="catalog-search-input">
               <button @click="handleAddNewCatalog" class="catalog-add-btn">新增课程</button>
             </div>
           </div>
-
           <div class="catalog-content">
-            <div v-if="isCatalogsLoading" class="catalog-loading">
-              <div class="loading-spinner"></div>
-              <span>正在加载课程目录...</span>
-            </div>
-
-            <div v-else-if="filteredCatalogs.length === 0" class="catalog-empty">
-              <h3>{{ catalogSearchQuery ? '未找到匹配的课程' : '暂无课程目录' }}</h3>
-              <p>{{ catalogSearchQuery ? '请尝试其他搜索关键词' : '点击上方"新增课程"按钮来创建第一个课程' }}</p>
-            </div>
-
+            <div v-if="isCatalogsLoading" class="catalog-loading"><div class="loading-spinner"></div><span>正在加载课程目录...</span></div>
+            <div v-else-if="filteredCatalogs.length === 0" class="catalog-empty"><h3>{{ catalogSearchQuery ? '未找到匹配的课程' : '暂无课程目录' }}</h3><p>{{ catalogSearchQuery ? '请尝试其他搜索关键词' : '点击上方"新增课程"按钮来创建第一个课程' }}</p></div>
             <div v-else class="catalog-list">
               <div v-for="catalog in visibleCatalogs" :key="catalog.id" class="catalog-row">
                 <div class="catalog-info">
                   <div class="catalog-name">{{ catalog.name }}</div>
-                  <div class="catalog-meta">
-                    <span>{{ catalog.courseCode }}</span>
-                    <span>{{ catalog.credits }}学分</span>
-                    <span>{{ catalog.lessonsPerWeek }}节/周</span>
-                  </div>
+                  <div class="catalog-meta"><span>{{ catalog.courseCode }}</span><span>{{ catalog.credits }}学分</span><span>{{ catalog.lessonsPerWeek }}节/周</span></div>
                 </div>
                 <div class="catalog-actions">
-                  <button @click="handleEditCatalog(catalog)" class="catalog-edit-btn">编辑</button>
+                  <button @click="catalogModal.openEdit(catalog)" class="catalog-edit-btn">编辑</button>
                   <button @click="handleCatalogDelete(catalog.id)" class="catalog-delete-btn">删除</button>
                 </div>
               </div>
             </div>
-
             <div v-if="catalogTotalPages > 1" class="catalog-pagination">
-              <button
-                  :disabled="catalogCurrentPage === 1"
-                  @click="catalogCurrentPage = Math.max(1, catalogCurrentPage - 1)"
-                  class="catalog-pagination-btn"
-              >
-                上一页
-              </button>
-              <span class="catalog-pagination-info">
-                第 {{ catalogCurrentPage }} 页 / 共 {{ catalogTotalPages }} 页 ({{ filteredCatalogs.length }} 门课程)
-              </span>
-              <button
-                  :disabled="catalogCurrentPage === catalogTotalPages"
-                  @click="catalogCurrentPage = Math.min(catalogTotalPages, catalogCurrentPage + 1)"
-                  class="catalog-pagination-btn"
-              >
-                下一页
-              </button>
+              <button :disabled="catalogCurrentPage === 1" @click="catalogCurrentPage--" class="catalog-pagination-btn">上一页</button>
+              <span class="catalog-pagination-info">第 {{ catalogCurrentPage }} 页 / 共 {{ catalogTotalPages }} 页 ({{ filteredCatalogs.length }} 门课程)</span>
+              <button :disabled="catalogCurrentPage === catalogTotalPages" @click="catalogCurrentPage++" class="catalog-pagination-btn">下一页</button>
             </div>
           </div>
-
-          <div class="catalog-footer">
-            <button type="button" @click="closeCatalogManagementModal" class="catalog-close-btn">关闭</button>
-          </div>
+          <div class="catalog-footer"><button type="button" @click="catalogModal.close" class="catalog-close-btn">关闭</button></div>
         </div>
       </div>
     </div>
@@ -331,11 +221,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, reactive } from 'vue';
 import { courseService, teacherService, majorService, classService, classroomService } from '@/services/apiService';
 import { showNotification } from '@/services/notificationStore';
 import ScheduleGrid from '@/components/ScheduleGrid.vue';
 
+// --- 响应式状态定义 ---
 const allOfferings = ref([]);
 const teachers = ref([]);
 const majors = ref([]);
@@ -347,68 +238,17 @@ const isCatalogsLoading = ref(false);
 const isSubmitting = ref(false);
 const hoveredOfferingId = ref(null);
 const filters = ref({ majorId: null, classId: null, searchQuery: '' });
+
+// 分页和搜索状态
 const currentPage = ref(1);
 const pageSize = ref(20);
 const catalogCurrentPage = ref(1);
 const catalogPageSize = ref(10);
 const catalogSearchQuery = ref('');
-const showOfferingModal = ref(false);
-const isEditingOffering = ref(false);
-const getNewEditableOffering = () => ({
-  id: null, courseCatalogId: '', teacherId: '', academicYear: 1, semester: 1,
-  courseDay: null, courseTime: null, associatedClasses: [],
-  capacity: null, classroomId: null,
-});
-const editableOffering = ref(getNewEditableOffering());
-const showCatalogModal = ref(false);
-const isEditingCatalog = ref(false);
-const editableCatalog = ref({ id: null, name: '', courseCode: '', credits: 1.0, lessonsPerWeek: 1 });
 
-const hasFiltersApplied = computed(() => filters.value.majorId !== null || filters.value.classId !== null || filters.value.searchQuery !== '');
-const classesFilteredByMajor = computed(() => {
-  if (!filters.value.majorId) return [];
-  return classes.value.filter(cls => cls.majorId === filters.value.majorId);
-});
-const filteredOfferings = computed(() => {
-  if (!hasFiltersApplied.value) return [];
-  return allOfferings.value.filter(offering => {
-    const { majorId, classId, searchQuery } = filters.value;
-    const searchLower = searchQuery.toLowerCase();
-    const classMatch = !classId || (offering.associatedClasses && offering.associatedClasses.some(c => c.classId === classId));
-    const majorMatch = !majorId || (offering.associatedClasses && offering.associatedClasses.some(c => {
-      const cls = classes.value.find(cl => cl.id === c.classId);
-      return cls && cls.majorId === majorId;
-    }));
-    const searchMatch = !searchQuery ||
-        (offering.courseName?.toLowerCase().includes(searchLower)) ||
-        (offering.courseCode?.toLowerCase().includes(searchLower)) ||
-        (offering.teacherName?.toLowerCase().includes(searchLower));
-    return classMatch && majorMatch && searchMatch;
-  });
-});
-const totalPages = computed(() => Math.ceil(filteredOfferings.value.length / pageSize.value));
-const paginatedOfferings = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return filteredOfferings.value.slice(start, end);
-});
-const filteredCatalogs = computed(() => {
-  if (!catalogSearchQuery.value) return catalogs.value;
-  const query = catalogSearchQuery.value.toLowerCase();
-  return catalogs.value.filter(catalog =>
-      catalog.name.toLowerCase().includes(query) ||
-      catalog.courseCode.toLowerCase().includes(query)
-  );
-});
-const catalogTotalPages = computed(() => Math.ceil(filteredCatalogs.value.length / catalogPageSize.value));
-const visibleCatalogs = computed(() => {
-  const start = (catalogCurrentPage.value - 1) * catalogPageSize.value;
-  const end = start + catalogPageSize.value;
-  return filteredCatalogs.value.slice(start, end);
-});
-
-const fetchAllData = async () => {
-  isOfferingsLoading.value = true;
+// --- 数据获取与处理 ---
+const fetchAllData = async (showLoading = true) => {
+  if(showLoading) isOfferingsLoading.value = true;
   try {
     const [offeringsRes, teachersRes, majorsRes, catalogsRes, classesRes, classroomsRes] = await Promise.all([
       courseService.getAllOfferings(), teacherService.getAll(), majorService.getAll(),
@@ -423,153 +263,147 @@ const fetchAllData = async () => {
   } catch (e) {
     showNotification(e.message || '数据加载失败', 'error');
   } finally {
-    isOfferingsLoading.value = false;
+    if(showLoading) isOfferingsLoading.value = false;
   }
 };
-
 onMounted(fetchAllData);
 
-watch(() => filters.value.majorId, () => {
-  filters.value.classId = null;
+// --- 计算属性 (筛选与分页) ---
+const hasFiltersApplied = computed(() => filters.value.majorId !== null || filters.value.classId !== null || filters.value.searchQuery !== '');
+const classesFilteredByMajor = computed(() => !filters.value.majorId ? [] : classes.value.filter(cls => cls.majorId === filters.value.majorId));
+const filteredOfferings = computed(() => {
+  if (!hasFiltersApplied.value) return [];
+  const searchLower = filters.value.searchQuery.toLowerCase();
+  return allOfferings.value.filter(offering => {
+    const { majorId, classId } = filters.value;
+    const classMatch = !classId || offering.associatedClasses?.some(c => c.classId === classId);
+    const majorMatch = !majorId || offering.associatedClasses?.some(c => classes.value.find(cl => cl.id === c.classId)?.majorId === majorId);
+    const searchMatch = !searchLower || offering.courseName?.toLowerCase().includes(searchLower) || offering.courseCode?.toLowerCase().includes(searchLower) || offering.teacherName?.toLowerCase().includes(searchLower);
+    return classMatch && majorMatch && searchMatch;
+  });
 });
+const totalPages = computed(() => Math.ceil(filteredOfferings.value.length / pageSize.value));
+const paginatedOfferings = computed(() => filteredOfferings.value.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value));
+const filteredCatalogs = computed(() => !catalogSearchQuery.value ? catalogs.value : catalogs.value.filter(c => c.name.toLowerCase().includes(catalogSearchQuery.value.toLowerCase()) || c.courseCode.toLowerCase().includes(catalogSearchQuery.value.toLowerCase())));
+const catalogTotalPages = computed(() => Math.ceil(filteredCatalogs.value.length / catalogPageSize.value));
+const visibleCatalogs = computed(() => filteredCatalogs.value.slice((catalogCurrentPage.value - 1) * catalogPageSize.value, catalogCurrentPage.value * catalogPageSize.value));
 
-watch([() => filters.value.majorId, () => filters.value.classId, () => filters.value.searchQuery], () => {
-  currentPage.value = 1;
-});
+// --- 侦听器 ---
+watch(() => filters.value.majorId, () => { filters.value.classId = null; });
+watch(filters, () => { currentPage.value = 1; }, { deep: true });
+watch(catalogSearchQuery, () => { catalogCurrentPage.value = 1; });
 
-watch(catalogSearchQuery, () => {
-  catalogCurrentPage.value = 1;
-});
-
-const openAddOfferingModal = (initialData = {}) => {
-  isEditingOffering.value = false;
-  editableOffering.value = { ...getNewEditableOffering(), ...initialData };
-  showOfferingModal.value = true;
+// --- 模态框与API请求的通用逻辑 ---
+const useModalLogic = (getNewItem) => {
+  const state = reactive({ show: false, isEditing: false, editable: getNewItem() });
+  const openAdd = (initialData = {}) => {
+    state.editable = { ...getNewItem(), ...initialData };
+    state.isEditing = false;
+    state.show = true;
+  };
+  const openEdit = (item) => {
+    state.editable = JSON.parse(JSON.stringify(item));
+    if (getNewItem === getNewOfferingItem && !state.editable.associatedClasses) {
+      state.editable.associatedClasses = [];
+    }
+    state.isEditing = true;
+    state.show = true;
+  };
+  const close = () => { state.show = false; };
+  return { state, openAdd, openEdit, close };
 };
 
-const openEditOfferingModal = (offering) => {
-  isEditingOffering.value = true;
-  editableOffering.value = JSON.parse(JSON.stringify(offering));
-  if (!editableOffering.value.associatedClasses) {
-    editableOffering.value.associatedClasses = [];
-  }
-  showOfferingModal.value = true;
-};
-
-const closeOfferingModal = () => {
-  showOfferingModal.value = false;
-};
-
-const addClassLink = () => {
-  editableOffering.value.associatedClasses.push({ classId: '', courseType: 'ELECTIVE' });
-};
-
-const removeClassLink = (index) => {
-  editableOffering.value.associatedClasses.splice(index, 1);
-};
-
-const handleOfferingSubmit = async () => {
+const handleApiAction = async (action, successMessage, refreshData = true) => {
   isSubmitting.value = true;
   try {
-    if (isNaN(parseInt(editableOffering.value.capacity, 10))) {
-      editableOffering.value.capacity = null;
-    }
-    const action = isEditingOffering.value
-        ? courseService.updateOffering(editableOffering.value.id, editableOffering.value)
-        : courseService.createOffering(editableOffering.value);
-    await action;
-    showNotification(`课程安排${isEditingOffering.value ? '更新' : '创建'}成功！`, 'success');
-    closeOfferingModal();
-    await fetchAllData();
+    await action();
+    showNotification(successMessage, 'success');
+    if (refreshData) await fetchAllData(false);
+    return true;
   } catch (e) {
     showNotification(e.message || '操作失败', 'error');
+    return false;
   } finally {
     isSubmitting.value = false;
   }
+};
+
+// --- 模态框状态管理 ---
+const getNewOfferingItem = () => ({ id: null, courseCatalogId: '', teacherId: '', academicYear: 1, semester: 1, courseDay: null, courseTime: null, associatedClasses: [], capacity: null, classroomId: null });
+const getNewCatalogItem = () => ({ id: null, name: '', courseCode: '', credits: 1.0, lessonsPerWeek: 1 });
+
+const offeringModal = useModalLogic(getNewOfferingItem);
+const catalogModal = useModalLogic(getNewCatalogItem);
+
+// 【修复】为目录管理模态框创建专用的打开函数
+const openCatalogManagementModal = async () => {
+  isCatalogsLoading.value = true;
+  try {
+    catalogs.value = await courseService.getAllCatalogs();
+    catalogModal.state.isEditing = false; // 确保初始是列表视图
+    catalogModal.state.show = true;
+  } catch (e) {
+    showNotification('获取目录失败', 'error');
+  } finally {
+    isCatalogsLoading.value = false;
+  }
+}
+
+// 【修复】为"新增课程"按钮创建专用处理函数
+const handleAddNewCatalog = () => {
+  catalogModal.state.editable = getNewCatalogItem();
+  catalogModal.state.isEditing = true; // 强制切换到编辑/新增视图
+};
+
+// --- 事件处理函数 ---
+const handleOfferingSubmit = async () => {
+  const { editable } = offeringModal.state; // 获取可编辑的对象
+  if (isNaN(parseInt(editable.capacity, 10))) editable.capacity = null;
+
+  // 【修复】判断条件从 isEditing 改为 editable.id 是否存在
+  const action = editable.id
+      ? () => courseService.updateOffering(editable.id, editable)
+      : () => courseService.createOffering(editable);
+
+  const success = await handleApiAction(action, `课程安排${editable.id ? '更新' : '创建'}成功！`);
+  if (success) offeringModal.close();
 };
 
 const handleDeleteOffering = async (id) => {
   if (!id || !confirm('确定要删除这个课程安排吗？相关的学生选课记录也会被删除。')) return;
-  isSubmitting.value = true;
-  try {
-    await courseService.deleteOffering(id);
-    showNotification('删除成功！', 'success');
-    if (showOfferingModal.value && editableOffering.value.id === id) {
-      closeOfferingModal();
-    }
-    await fetchAllData();
-  } catch (e) {
-    showNotification(e.message || '删除失败', 'error');
-  } finally {
-    isSubmitting.value = false;
+  const success = await handleApiAction(() => courseService.deleteOffering(id), '删除成功！');
+  if (success && offeringModal.state.show && offeringModal.state.editable.id === id) {
+    offeringModal.close();
   }
-};
-
-const openCatalogManagementModal = async () => {
-  isEditingCatalog.value = false;
-  showCatalogModal.value = true;
-  catalogCurrentPage.value = 1;
-  catalogSearchQuery.value = '';
-  isCatalogsLoading.value = true;
-  try {
-    catalogs.value = await courseService.getAllCatalogs();
-  } catch (e) {
-    showNotification(e.message || '获取目录失败', 'error');
-  } finally {
-    isCatalogsLoading.value = false;
-  }
-};
-
-const closeCatalogManagementModal = () => {
-  showCatalogModal.value = false;
-};
-
-const handleAddNewCatalog = () => {
-  editableCatalog.value = { id: null, name: '', courseCode: '', credits: 1.0, lessonsPerWeek: 1 };
-  isEditingCatalog.value = true;
-};
-
-const handleEditCatalog = (catalog) => {
-  editableCatalog.value = { ...catalog };
-  isEditingCatalog.value = true;
 };
 
 const handleCatalogSubmit = async () => {
-  isSubmitting.value = true;
-  try {
-    const action = editableCatalog.value.id
-        ? courseService.updateCatalog(editableCatalog.value.id, editableCatalog.value)
-        : courseService.createCatalog(editableCatalog.value);
-    await action;
-    showNotification('操作成功！', 'success');
-    isEditingCatalog.value = false;
-    await fetchAllData();
-  } catch (e) {
-    showNotification(e.message || '操作失败', 'error');
-  } finally {
-    isSubmitting.value = false;
+  const { editable } = catalogModal.state; // 获取可编辑的对象
+
+  // 【修复】判断条件从 isEditing 改为 editable.id 是否存在
+  const action = editable.id
+      ? () => courseService.updateCatalog(editable.id, editable)
+      : () => courseService.createCatalog(editable);
+
+  const success = await handleApiAction(action, '课程目录操作成功！');
+  if (success) {
+    catalogModal.state.isEditing = false;
+    catalogs.value = await courseService.getAllCatalogs();
   }
 };
 
 const handleCatalogDelete = async (id) => {
   if (!confirm('确定要删除吗？如果该课程已被使用，删除将会失败。')) return;
-  try {
-    await courseService.deleteCatalog(id);
-    showNotification('删除成功！', 'success');
-    await fetchAllData();
-  } catch (e) {
-    showNotification(e.message || '删除失败', 'error');
+  const success = await handleApiAction(() => courseService.deleteCatalog(id), '删除成功！');
+  if(success) {
+    catalogs.value = await courseService.getAllCatalogs(); // 刷新目录数据
   }
 };
 
-const formatCourseTime = (day, time) => {
-  if (!day || !time) return '时间待定';
-  return `周${'一二三四五六日'[day - 1]}, 第${time}节`;
-};
+// --- 辅助函数 ---
+const formatCourseTime = (day, time) => !day || !time ? '时间待定' : `周${'一二三四五六日'[day - 1]}, 第${time}节`;
+const getClassesByMajorId = (majorId) => classes.value.filter(c => c.majorId === majorId);
 
-const getClassesByMajorId = (majorId) => {
-  return classes.value.filter(c => c.majorId === majorId);
-};
 </script>
 
 <style scoped>
@@ -1126,7 +960,16 @@ const getClassesByMajorId = (majorId) => {
   max-width: 90%;
   max-height: 80vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+
+.catalog-edit-view, .catalog-list-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 
 .catalog-edit-header {
   display: flex;
@@ -1134,6 +977,7 @@ const getClassesByMajorId = (majorId) => {
   gap: 16px;
   padding: 24px 32px;
   border-bottom: 1px solid #e9ecef;
+  flex-shrink: 0;
 }
 
 .back-btn {
@@ -1157,6 +1001,7 @@ const getClassesByMajorId = (majorId) => {
 
 .catalog-form {
   padding: 24px 32px;
+  overflow-y: auto;
 }
 
 .catalog-form-grid {
@@ -1248,6 +1093,7 @@ const getClassesByMajorId = (majorId) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .catalog-header h2 {
@@ -1287,8 +1133,8 @@ const getClassesByMajorId = (majorId) => {
 
 .catalog-content {
   padding: 16px 32px;
-  max-height: 60vh;
   overflow-y: auto;
+  flex-grow: 1;
 }
 
 .catalog-loading {
@@ -1439,6 +1285,7 @@ const getClassesByMajorId = (majorId) => {
   padding: 16px 32px;
   border-top: 1px solid #e9ecef;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .catalog-close-btn {

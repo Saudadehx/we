@@ -8,6 +8,5 @@ public class CourseCatalog {
     private String courseCode;
     private String name;
     private Double credits;
-    private String requiredClassroomType;
-    private Integer lessonsPerWeek; // 【代码新增】
+    private Integer lessonsPerWeek;
 }
