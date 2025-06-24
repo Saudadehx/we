@@ -38,4 +38,8 @@
         DELETE FROM enrollments WHERE course_offering_id = #{courseOfferingId}
     </delete>
 
+    <select id="countByCourseOfferingId" parameterType="long" resultType="int">
+        SELECT COUNT(*) FROM enrollments WHERE course_offering_id = #{courseOfferingId}
+    </select>
+
 </mapper>

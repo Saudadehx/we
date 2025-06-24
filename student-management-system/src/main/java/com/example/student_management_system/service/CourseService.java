@@ -28,11 +28,12 @@ public class CourseService {
     private final ClassMapper classMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final EnrollmentMapper enrollmentMapper;
+    private final ClassroomMapper classroomMapper;
 
     @Autowired
     public CourseService(CourseCatalogMapper courseCatalogMapper, CourseOfferingMapper courseOfferingMapper,
                          OfferingClassLinkMapper offeringClassLinkMapper, TeacherMapper teacherMapper, ClassMapper classMapper,
-                         ApplicationEventPublisher eventPublisher, EnrollmentMapper enrollmentMapper) {
+                         ApplicationEventPublisher eventPublisher, EnrollmentMapper enrollmentMapper,ClassroomMapper classroomMapper) {
         this.courseCatalogMapper = courseCatalogMapper;
         this.courseOfferingMapper = courseOfferingMapper;
         this.offeringClassLinkMapper = offeringClassLinkMapper;
@@ -40,6 +41,7 @@ public class CourseService {
         this.classMapper = classMapper;
         this.eventPublisher = eventPublisher;
         this.enrollmentMapper = enrollmentMapper;
+        this.classroomMapper = classroomMapper;
     }
 
     // --- 课程目录管理 (无变化) ---
@@ -50,6 +52,7 @@ public class CourseService {
         dto.setCourseCode(entity.getCourseCode());
         dto.setName(entity.getName());
         dto.setCredits(entity.getCredits());
+        dto.setLessonsPerWeek(entity.getLessonsPerWeek()); // 【代码新增】
         return dto;
     }
 
@@ -59,6 +62,7 @@ public class CourseService {
         entity.setCourseCode(dto.getCourseCode());
         entity.setName(dto.getName());
         entity.setCredits(dto.getCredits());
+        entity.setLessonsPerWeek(dto.getLessonsPerWeek()); // 【代码新增】
         return entity;
     }
     public List<CourseCatalogDTO> getAllCatalogs() {
@@ -90,6 +94,7 @@ public class CourseService {
         existing.setCourseCode(catalogDto.getCourseCode());
         existing.setName(catalogDto.getName());
         existing.setCredits(catalogDto.getCredits());
+        existing.setLessonsPerWeek(catalogDto.getLessonsPerWeek()); // 【代码新增】
 
         courseCatalogMapper.update(existing);
         return convertToDto(existing);
@@ -183,7 +188,7 @@ public class CourseService {
             return;
         }
 
-        // 教师时间冲突检查 (不变)
+        // 教师时间冲突检查
         if (offering.getTeacherId() != null) {
             List<CourseOffering> teacherConflicts = courseOfferingMapper.findOfferingsByTeacherAndTimetable(
                     offering.getTeacherId(), offering.getAcademicYear(), offering.getSemester(),
@@ -191,6 +196,24 @@ public class CourseService {
             if (!teacherConflicts.isEmpty()) {
                 Teacher teacher = teacherMapper.findById(offering.getTeacherId());
                 throw new IllegalArgumentException("教师冲突: " + teacher.getName() + " 在该时间已有其他安排。");
+            }
+        }
+        // 教室时间冲突检查
+        if (offering.getClassroomId() != null) {
+            List<CourseOffering> classroomConflicts = courseOfferingMapper.findOfferingsByClassroomAndTimetable(
+                    offering.getClassroomId(), offering.getAcademicYear(), offering.getSemester(),
+                    offering.getCourseDay(), offering.getCourseTime(), offering.getId());
+            if (!classroomConflicts.isEmpty()) {
+                Classroom classroom = classroomMapper.findById(offering.getClassroomId());
+                throw new IllegalArgumentException("教室冲突: " + classroom.getName() + " 在该时间已被其他课程占用。");
+            }
+        }
+
+        // 【新增】检查课程容量是否小于教室容量
+        if (offering.getCapacity() != null && offering.getClassroomId() != null) {
+            Classroom classroom = classroomMapper.findById(offering.getClassroomId());
+            if (offering.getCapacity() > classroom.getCapacity()) {
+                throw new IllegalArgumentException("课程容量 (" + offering.getCapacity() + ") 不能大于教室容量 (" + classroom.getCapacity() + ")。");
             }
         }
 

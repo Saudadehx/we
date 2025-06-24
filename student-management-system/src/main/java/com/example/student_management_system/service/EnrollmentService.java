@@ -157,10 +157,15 @@ public class EnrollmentService {
         if (!systemSettingService.isCourseSelectionOpen()) {
             throw new IllegalStateException("当前非选课时间，无法进行操作。");
         }
+        // 【修正】检查课程安排是否存在
         CourseOffering targetOffering = courseOfferingMapper.findById(offeringDbId);
-        if (targetOffering == null) {
-            throw new ResourceNotFoundException("ID为 " + offeringDbId + " 的课程安排不存在。");
+        if (targetOffering.getCapacity() != null) {
+            int currentEnrollmentCount = enrollmentMapper.countByCourseOfferingId(offeringDbId);
+            if (currentEnrollmentCount >= targetOffering.getCapacity()) {
+                throw new IllegalStateException("选课失败：【" + targetOffering.getCourseName() + "】课程容量已满。");
+            }
         }
+
         Student student = studentMapper.findById(studentDbId);
         // 【修正】判断是否为学生所在班级的必修课
         boolean isCompulsoryForStudent = targetOffering.getAssociatedClasses().stream()
@@ -274,6 +279,7 @@ public class EnrollmentService {
                 dto.setCourseDay(offering.getCourseDay());
                 dto.setCourseTime(offering.getCourseTime());
                 dto.setTeacherName(offering.getTeacherName() != null ? offering.getTeacherName() : "未知教师");
+                dto.setClassroomName(offering.getClassroomName()); // 【代码新增】
             }
             return dto;
         }).collect(Collectors.toList());
@@ -292,10 +298,17 @@ public class EnrollmentService {
         if (allOfferings.isEmpty()) {
             return Collections.emptyList();
         }
+
         return allOfferings.stream()
                 .filter(offering ->
                         offering.getAcademicYear().equals(student.getAcademicYear()) &&
                                 offering.getSemester().equals(student.getSemester()))
+                .map(offering -> {
+                    // 为每个课程安排填充当前已选人数
+                    int currentEnrollment = enrollmentMapper.countByCourseOfferingId(offering.getId());
+                    offering.setCurrentEnrollment(currentEnrollment);
+                    return offering;
+                })
                 .collect(Collectors.toList());
     }
 

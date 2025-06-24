@@ -19,10 +19,11 @@
               <div class="time-range">{{ timeSlot.range }}</div>
             </div>
             <div v-for="dayIndex in 7" :key="`${timeSlot.id}-${dayIndex}`" class="class-cell">
-              <div v-if="getCourseAt(dayIndex, timeSlot.id)" class="courseCatalog-item">
-                <div class="courseCatalog-details">
+              <div v-if="getCourseAt(dayIndex, timeSlot.id)" class="course-item">
+                <div class="course-details">
                   <strong>{{ getCourseAt(dayIndex, timeSlot.id).courseName }}</strong>
                   <span>{{ getCourseAt(dayIndex, timeSlot.id).teacherName || 'N/A' }}</span>
+                  <span class="course-location">{{ getCourseAt(dayIndex, timeSlot.id).classroomName || '教室待定' }}</span>
                 </div>
               </div>
               <div v-else class="empty-cell"></div>
@@ -32,37 +33,6 @@
       </div>
 
       <div class="content-card" style="margin-top: 24px;">
-        <div class="summary-card">
-          <div class="summary-item">
-            <span class="summary-label">已修总学分:</span>
-            <span class="summary-value">{{ totalCredits }}</span>
-          </div>
-        </div>
-        <table class="data-table my-cours-table">
-          <thead>
-          <tr>
-            <th>课程编号</th>
-            <th>课程名称</th>
-            <th>学分</th>
-            <th class="score-col">我的成绩</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="item in myEnrollments" :key="item.enrollmentId" class="table-row">
-            <td>{{ item.courseId }}</td>
-            <td>{{ item.courseName }}</td>
-            <td>{{ item.credits }}</td>
-            <td class="score-col">
-                <span :class="getScoreClass(item.score)" class="score-display">
-                  {{ item.score !== null ? item.score : '暂无' }}
-                </span>
-            </td>
-          </tr>
-          <tr v-if="myEnrollments.length === 0">
-            <td colspan="4" class="no-data-cell">您尚未选修任何课程。</td>
-          </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </div>
@@ -76,7 +46,6 @@ import { showNotification } from '@/services/notificationStore';
 const isLoading = ref(true);
 const myEnrollments = ref([]);
 
-// 课表的时间和日期定义
 const days = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
 const timeSlots = [
   { id: 1, range: '8:00-9:40' },
@@ -89,6 +58,7 @@ const timeSlots = [
 const fetchMyScheduleAndGrades = async () => {
   isLoading.value = true;
   try {
+    // 后端已更新，此API返回的数据中现在包含了 classroomName
     myEnrollments.value = await studentService.getMyCoursesAndGrades();
   } catch (error) {
     showNotification('加载课表与成绩失败', 'error');
@@ -99,12 +69,13 @@ const fetchMyScheduleAndGrades = async () => {
 
 onMounted(fetchMyScheduleAndGrades);
 
+// --- computed & methods (与上一版代码一致) ---
 const courseMap = computed(() => {
   const map = new Map();
-  myEnrollments.value.forEach(courseCatalog => {
-    if (courseCatalog.courseDay && courseCatalog.courseTime) {
-      const key = `${courseCatalog.courseDay}-${courseCatalog.courseTime}`;
-      map.set(key, courseCatalog);
+  myEnrollments.value.forEach(course => {
+    if (course.courseDay && course.courseTime) {
+      const key = `${course.courseDay}-${course.courseTime}`;
+      map.set(key, course);
     }
   });
   return map;
@@ -127,6 +98,21 @@ const getScoreClass = (score) => {
 </script>
 
 <style scoped>
+/* 原有样式基础上增加/修改 */
+.course-item {
+  width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
+  border-radius: 6px; background-color: var(--color-primary-light);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.course-details {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.course-details strong { color: var(--color-text-primary); font-weight: 600; font-size: 0.95em; }
+.course-details span { font-size: 0.85em; color: var(--color-text-secondary); }
+.course-details .course-location {
+  font-style: italic;
+  font-size: 0.8em;
+}
 .timetable-card { padding: 0; overflow-x: auto; }
 .timetable { display: grid; grid-template-columns: 120px repeat(7, minmax(150px, 1fr)); gap: 1px; background-color: var(--color-border); border-radius: var(--border-radius); overflow: hidden; min-width: 900px; }
 .header-cell, .class-cell { background-color: var(--color-surface); padding: 10px; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }

@@ -19,6 +19,7 @@ public interface EnrollmentMapper {
     void deleteById(Long id);
 
     Enrollment findById(Long id);
+    int countByCourseOfferingId(Long courseOfferingId);
 
     /**
      * 【新增方法】根据课程安排ID删除所有相关的选课记录。

@@ -1,8 +1,6 @@
 package com.example.student_management_system.dto;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
@@ -18,4 +16,9 @@ public class CourseCatalogDTO {
     @NotNull(message = "学分不能为空")
     @DecimalMin(value = "0.5", message = "学分必须大于或等于0.5")
     private Double credits;
+
+    // 【代码新增】
+    @NotNull(message = "每周节数不能为空")
+    @Min(value = 1, message = "每周至少需要1节课")
+    private Integer lessonsPerWeek;
 }

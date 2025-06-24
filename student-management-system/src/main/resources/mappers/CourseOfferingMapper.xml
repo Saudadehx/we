@@ -10,12 +10,13 @@
         <result property="semester" column="semester"/>
         <result property="courseDay" column="course_day"/>
         <result property="courseTime" column="course_time"/>
-
+        <result property="capacity" column="capacity"/>
+        <result property="classroomId" column="classroom_id"/>
         <result property="courseName" column="course_name"/>
         <result property="courseCode" column="course_code"/>
         <result property="credits" column="credits"/>
         <result property="teacherName" column="teacher_name"/>
-
+        <result property="classroomName" column="classroom_name"/>
         <collection property="associatedClasses" ofType="com.example.student_management_system.model.CourseOffering$ClassInfo">
             <id property="classId" column="class_id"/>
             <result property="className" column="class_name"/>
@@ -26,13 +27,16 @@
     <sql id="SELECT_ALL_FIELDS_WITH_JOINS">
         SELECT
             co.id as offering_id, co.course_catalog_id, co.teacher_id, co.academic_year, co.semester, co.course_day, co.course_time,
+            co.capacity, co.classroom_id,
             cc.name as course_name, cc.course_code, cc.credits,
             t.name as teacher_name,
+            cr.name as classroom_name,
             ocl.class_id, ocl.course_type,
             c.name as class_name
         FROM course_offerings co
                  JOIN course_catalogs cc ON co.course_catalog_id = cc.id
                  LEFT JOIN teachers t ON co.teacher_id = t.id
+                 LEFT JOIN classrooms cr ON co.classroom_id = cr.id
                  LEFT JOIN offering_class_links ocl ON co.id = ocl.course_offering_id
                  LEFT JOIN classes c ON ocl.class_id = c.id
     </sql>
@@ -54,8 +58,8 @@
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.CourseOffering" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO course_offerings(course_catalog_id, teacher_id, academic_year, semester, course_day, course_time)
-        VALUES (#{courseCatalogId}, #{teacherId}, #{academicYear}, #{semester}, #{courseDay}, #{courseTime})
+        INSERT INTO course_offerings(course_catalog_id, teacher_id, academic_year, semester, course_day, course_time, capacity, classroom_id)
+        VALUES (#{courseCatalogId}, #{teacherId}, #{academicYear}, #{semester}, #{courseDay}, #{courseTime}, #{capacity}, #{classroomId})
     </insert>
 
     <update id="update" parameterType="com.example.student_management_system.model.CourseOffering">
@@ -65,7 +69,9 @@
             academic_year = #{academicYear},
             semester = #{semester},
             course_day = #{courseDay},
-            course_time = #{courseTime}
+            course_time = #{courseTime},
+            capacity = #{capacity},
+            classroom_id = #{classroomId}
         WHERE id = #{id}
     </update>
 
@@ -76,6 +82,18 @@
     <select id="findOfferingsByTeacherAndTimetable" resultType="com.example.student_management_system.model.CourseOffering">
         SELECT * FROM course_offerings
         WHERE teacher_id = #{teacherId}
+        AND academic_year = #{academicYear}
+        AND semester = #{semester}
+        AND course_day = #{courseDay}
+        AND course_time = #{courseTime}
+        <if test="excludeOfferingId != null">
+            AND id != #{excludeOfferingId}
+        </if>
+    </select>
+
+    <select id="findOfferingsByClassroomAndTimetable" resultType="com.example.student_management_system.model.CourseOffering">
+        SELECT * FROM course_offerings
+        WHERE classroom_id = #{classroomId}
         AND academic_year = #{academicYear}
         AND semester = #{semester}
         AND course_day = #{courseDay}

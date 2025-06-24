@@ -13,6 +13,7 @@ const routes = [
   { path: '/dashboard/courses', name: 'AdminCourseMgmt', component: () => import('@/views/admin/CourseManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/dashboard/teachers', name: 'AdminTeacherMgmt', component: () => import('@/views/admin/TeacherManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   // 【新增】管理员设置路由
+  { path: '/dashboard/classrooms', name: 'AdminClassroomMgmt', component: () => import('@/views/admin/ClassroomManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/dashboard/settings', name: 'AdminSettings', component: () => import('@/views/admin/AdminSettings.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/dashboard/majors', name: 'AdminMajorMgmt', component: () => import('@/views/admin/MajorManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/dashboard/classes', name: 'AdminClassMgmt', component: () => import('@/views/admin/ClassManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },

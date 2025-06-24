@@ -97,6 +97,13 @@ export const classService = {
     delete: (id) => apiClient.delete(`/classes/${id}`),
 };
 
+export const classroomService = {
+    getAll: () => apiClient.get('/classrooms'),
+    create: (classroomData) => apiClient.post('/classrooms', classroomData),
+    update: (id, classroomData) => apiClient.put(`/classrooms/${id}`, classroomData),
+    delete: (id) => apiClient.delete(`/classrooms/${id}`),
+};
+
 export const studentService = { // 学生相关的服务
     getStats: () => apiClient.get('/students/stats'),
     getAllStudents: () => apiClient.get('/students'),

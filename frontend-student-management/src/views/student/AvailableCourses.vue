@@ -22,6 +22,8 @@
             <th>学分</th>
             <th>授课教师</th>
             <th>上课时间</th>
+            <th>上课教室</th>
+            <th>容量/已选</th>
             <th class="action-col">操作</th>
           </tr>
           </thead>
@@ -37,6 +39,12 @@
             <td>{{ offering.credits }}</td>
             <td>{{ offering.teacherName || '待定' }}</td>
             <td>{{ formatCourseTime(offering.courseDay, offering.courseTime) }}</td>
+            <td>{{ offering.classroomName || '待定' }}</td>
+            <td>
+              <span :class="getCapacityClass(offering)">
+                {{ offering.capacity != null ? offering.capacity : '不限' }} / {{ offering.currentEnrollment }}
+              </span>
+            </td>
             <td class="action-col">
               <template v-if="isEnrolled(offering.id)">
                   <span v-if="isCompulsory(offering) || hasGrade(offering.id)" class="status-tag non-withdrawable-tag">
@@ -47,8 +55,11 @@
                 </button>
               </template>
               <template v-else>
-                <button @click="handleEnroll(offering.id)" class="action-btn enroll-btn" :disabled="isEnrolling || hasConflict(offering) || isCompulsory(offering)">
-                  <span v-if="isCompulsory(offering)">系统预置</span>
+                <button @click="handleEnroll(offering.id)"
+                        class="action-btn enroll-btn"
+                        :disabled="isEnrolling || hasConflict(offering) || isCompulsory(offering) || isFull(offering)">
+                  <span v-if="isFull(offering)">已满</span>
+                  <span v-else-if="isCompulsory(offering)">系统预置</span>
                   <span v-else-if="hasConflict(offering)">时间冲突</span>
                   <span v-else>选课</span>
                 </button>
@@ -56,7 +67,7 @@
             </td>
           </tr>
           <tr v-if="availableOfferings.length === 0">
-            <td colspan="7" class="no-data-cell">当前学期未找到符合条件的课程。</td>
+            <td colspan="9" class="no-data-cell">当前学期未找到符合条件的课程。</td>
           </tr>
           </tbody>
         </table>
@@ -86,7 +97,6 @@ const fetchData = async () => {
     isSelectionOpen.value = statusRes.isOpen;
 
     if (isSelectionOpen.value) {
-      // 同时获取可选课程、我的选课、我的个人档案
       const [offeringsRes, enrollmentsRes, profileRes] = await Promise.all([
         enrollmentService.getAvailableOfferings(),
         studentService.getMyCoursesAndGrades(),
@@ -94,7 +104,7 @@ const fetchData = async () => {
       ]);
       availableOfferings.value = offeringsRes;
       myEnrollments.value = enrollmentsRes;
-      studentProfile.value = profileRes; // 保存学生档案，其中包含 classId
+      studentProfile.value = profileRes;
     }
   } catch (error) {
     showNotification(error.message || '数据加载失败', 'error');
@@ -133,25 +143,13 @@ const hasGrade = (offeringId) => {
   return enrollment && enrollment.score !== null;
 };
 
-/**
- * 【核心修正】更新判断课程类型的逻辑
- * 从基于 majorId 判断，改为基于 studentProfile.classId 判断
- */
 const getCourseTypeForStudent = (offering) => {
-  // 检查学生档案和课程的班级关联列表是否存在
   if (!studentProfile.value || !offering.associatedClasses) return 'ELECTIVE';
-
-  // 获取当前学生的班级ID
   const studentClassId = studentProfile.value.classId;
-
-  // 在课程的关联班级列表中，查找是否有与当前学生班级匹配的记录
   const association = offering.associatedClasses.find(c => c.classId === studentClassId);
-
-  // 如果找到匹配记录，返回其课程类型；否则，默认为选修
   return association ? association.courseType : 'ELECTIVE';
 };
 
-// isCompulsory 会自动因 getCourseTypeForStudent 的修正而变正确
 const isCompulsory = (offering) => getCourseTypeForStudent(offering) === 'COMPULSORY';
 
 const hasConflict = (offering) => {
@@ -165,7 +163,7 @@ const handleEnroll = async (offeringId) => {
   try {
     await enrollmentService.enrollInCourse(offeringId);
     showNotification('选课成功！', 'success');
-    await fetchData(); // 重新加载数据以更新界面
+    await fetchData();
   } catch (error) {
     showNotification(error.message || '选课失败', 'error');
   } finally {
@@ -179,9 +177,8 @@ const handleWithdraw = async (enrollmentId) => {
   try {
     await enrollmentService.dropCourse(enrollmentId);
     showNotification('退课成功！', 'success');
-    await fetchData(); // 重新加载数据
+    await fetchData();
   } catch (error) {
-    // 后端返回的明确错误信息会被显示出来
     showNotification(error.message || '退课失败', 'error');
   } finally {
     isWithdrawing.value = false;
@@ -199,10 +196,21 @@ const formatCourseType = (type) => {
   if (type === 'COMPULSORY') return '专业必修';
   return '专业选修';
 }
+
+const isFull = (offering) => {
+  return offering.capacity != null && offering.currentEnrollment >= offering.capacity;
+};
+
+const getCapacityClass = (offering) => {
+  if (offering.capacity == null) return 'capacity-unlimited';
+  const ratio = offering.currentEnrollment / offering.capacity;
+  if (ratio >= 1) return 'capacity-full';
+  if (ratio >= 0.8) return 'capacity-warning';
+  return 'capacity-normal';
+};
 </script>
 
 <style scoped>
-/* 样式与之前保持一致，此处省略 */
 .course-type { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600; color: white; }
 .course-type.compulsory { background-color: var(--color-danger); }
 .course-type.elective { background-color: var(--color-success); }
@@ -214,6 +222,9 @@ const formatCourseType = (type) => {
 .withdraw-btn { background-color: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); }
 .withdraw-btn:hover { background-color: var(--color-danger); color: white; }
 .closed-notice { text-align: center; padding: 40px; }
-.closed-notice h2 { margin: 16px 0; }
-.closed-notice p { color: var(--color-text-secondary); max-width: 400px; margin: 0 auto 24px auto; }
+
+.capacity-normal { color: var(--color-success); }
+.capacity-warning { color: #e67e22; font-weight: bold; }
+.capacity-full { color: var(--color-danger); font-weight: bold; }
+.capacity-unlimited { color: var(--color-text-secondary); font-style: italic; }
 </style>

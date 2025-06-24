@@ -26,13 +26,13 @@
     </select>
 
     <insert id="insert" parameterType="com.example.student_management_system.model.CourseCatalog" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO course_catalogs(course_code, name, credits)
-        VALUES(#{courseCode}, #{name}, #{credits})
+        INSERT INTO course_catalogs(course_code, name, credits, lessons_per_week)
+        VALUES(#{courseCode}, #{name}, #{credits}, #{lessonsPerWeek})
     </insert>
 
     <update id="update" parameterType="com.example.student_management_system.model.CourseCatalog">
         UPDATE course_catalogs
-        SET course_code = #{courseCode}, name = #{name}, credits = #{credits}
+        SET course_code = #{courseCode}, name = #{name}, credits = #{credits}, lessons_per_week = #{lessonsPerWeek}
         WHERE id = #{id}
     </update>
 

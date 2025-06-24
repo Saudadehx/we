@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.ClassroomMapper">
+    <resultMap id="ClassroomResultMap" type="com.example.student_management_system.model.Classroom">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="capacity" column="capacity"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="ClassroomResultMap">
+        SELECT * FROM classrooms ORDER BY name
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="ClassroomResultMap">
+        SELECT * FROM classrooms WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.student_management_system.model.Classroom" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO classrooms(name, type, capacity) VALUES(#{name}, #{type}, #{capacity})
+    </insert>
+
+    <update id="update" parameterType="com.example.student_management_system.model.Classroom">
+        UPDATE classrooms SET name = #{name}, type = #{type}, capacity = #{capacity} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM classrooms WHERE id = #{id}
+    </delete>
+</mapper>

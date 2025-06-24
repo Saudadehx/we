@@ -12,18 +12,20 @@ public class CourseOffering {
     private Integer semester;
     private Integer courseDay;
     private Integer courseTime;
+    // --- 新增字段 ---
+    private Integer capacity; // 课程容量
+    private Long classroomId; // 关联的教室ID
 
-    // --- 【修改】用于DTO和业务逻辑的临时字段 ---
+    // --- 用于DTO和业务逻辑的临时字段 ---
     private transient String courseName;
     private transient String courseCode;
     private transient Double credits;
     private transient String teacherName;
-    // 【修改】从 MajorInfo 列表变更为 ClassInfo 列表
     private transient List<ClassInfo> associatedClasses;
+    // --- 新增的临时字段 ---
+    private transient String classroomName; // 教室名称
+    private transient int currentEnrollment; // 当前已选人数 (由Service层填充)
 
-    /**
-     * 【新增】内部类，用于承载关联的班级信息
-     */
     @Data
     public static class ClassInfo {
         private Long classId;
