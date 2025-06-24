@@ -1,12 +1,14 @@
 // 文件路径: frontend-student-management/src/services/apiService.js
-// Description: 课程服务类，负责课程目录和课程安排的管理
+// Description: 统一的API服务中心，管理所有与后端交互的请求。
 import axios from 'axios';
-// 这里使用了axios库来处理HTTP请求
+
+// 创建并配置axios实例
 export const apiClient = axios.create({
     baseURL: 'http://localhost:8080/api',
     headers: { 'Content-Type': 'application/json' }
 });
 
+// 请求拦截器：自动为每个请求附上认证Token
 apiClient.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -15,8 +17,7 @@ apiClient.interceptors.request.use(config => {
     return config;
 }, error => Promise.reject(error));
 
-
-// 响应拦截器，使其能处理结构化的错误
+// 响应拦截器：统一处理后端返回的数据结构和错误信息
 apiClient.interceptors.response.use(
     response => {
         // 成功的响应，如果后端遵循了我们的ApiResult结构
@@ -41,7 +42,7 @@ apiClient.interceptors.response.use(
             const backendResponse = error.response.data;
             // 优先使用后端返回的ApiResult中的信息
             customError.message = backendResponse?.message || `请求失败：状态码 ${error.response.status}`;
-            customError.data = backendResponse?.data; // 关键：将后端的错误数据附加到Error对象上
+            customError.data = backendResponse?.data;
             customError.status = error.response.status;
 
             if (error.response.status === 401 || error.response.status === 403) {
@@ -55,7 +56,9 @@ apiClient.interceptors.response.use(
     }
 );
 
-export const teacherService = { // 教师相关的服务
+// --- 服务定义区 ---
+
+export const teacherService = {
     getAll: () => apiClient.get('/teachers'),
     create: (teacherData) => apiClient.post('/teachers', teacherData),
     update: (id, teacherData) => apiClient.put(`/teachers/${id}`, teacherData),
@@ -63,15 +66,14 @@ export const teacherService = { // 教师相关的服务
     getMyCourses: () => apiClient.get('/teachers/me/courses'),
 };
 
-
-export const majorService = {  // 专业相关的服务
+export const majorService = {
     getAll: () => apiClient.get('/majors'),
     create: (majorData) => apiClient.post('/majors', majorData),
     update: (id, majorData) => apiClient.put(`/majors/${id}`, majorData),
     delete: (id) => apiClient.delete(`/majors/${id}`),
 };
 
-export const courseService = {  // 课程相关的服务
+export const courseService = {
     getAllCatalogs: () => apiClient.get('/course-catalogs'),
     createCatalog: (catalogData) => apiClient.post('/course-catalogs', catalogData),
     updateCatalog: (id, catalogData) => apiClient.put(`/course-catalogs/${id}`, catalogData),
@@ -82,7 +84,7 @@ export const courseService = {  // 课程相关的服务
     deleteOffering: (id) => apiClient.delete(`/course-offerings/${id}`),
 };
 
-export const enrollmentService = { // 学生选课和教师评分相关的服务
+export const enrollmentService = {
     getForCourse: (offeringId) => apiClient.get(`/teachers/me/courses/${offeringId}/enrollments`),
     updateGrade: (enrollmentId, score) => apiClient.put(`/enrollments/${enrollmentId}`, { score }),
     enrollInCourse: (offeringId) => apiClient.post('/students/me/enrollments', { courseId: offeringId }),
@@ -121,7 +123,7 @@ export const studentService = {
     getMyCoursesAndGrades: () => apiClient.get('/students/me/enrollments')
 };
 
-// 【代码修改】扩展 systemSettingService
+// 【统一的】系统设置服务
 export const systemSettingService = {
     getCourseSelectionStatus() {
         return apiClient.get('/settings/course-selection-status');
