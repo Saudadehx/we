@@ -45,9 +45,10 @@ public class StudentDTO {
     private String college;
 
     // 【优化】增加@NotBlank校验
-    @NotBlank(message = "班级名称不能为空")
-    @Size(max = 100, message = "班级名称长度不能超过100")
+    //@NotBlank(message = "班级名称不能为空")
+    //@Size(max = 100, message = "班级名称长度不能超过100")
     private String className;
+    private Long classId;
 
     private LocalDate enrollmentDate;
     private String studentStatus;

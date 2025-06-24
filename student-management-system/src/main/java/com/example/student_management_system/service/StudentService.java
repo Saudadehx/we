@@ -41,20 +41,29 @@ public class StudentService {
         if (student == null) return null;
 
         StudentDTO dto = new StudentDTO();
-        BeanUtils.copyProperties(student, dto);
+        BeanUtils.copyProperties(student, dto); // student 中已经有了 className 和 majorName
 
-        if (student.getMajorId() != null) {
+        // 如果连接查询没有查出名称，则提供默认值
+        if (student.getMajorId() != null && student.getMajorName() == null) {
             Major major = majorMapper.findById(student.getMajorId());
-            dto.setMajorName(major != null ? major.getName() : "未分配");
-        } else {
+            dto.setMajorName(major != null ? major.getName() : "未知专业");
+        } else if (student.getMajorName() == null) {
             dto.setMajorName("未分配");
+        }
+
+        if (student.getClassId() != null && student.getClassName() == null) {
+            // 这里可以添加一个 classMapper.findById() 来作为备用方案
+            dto.setClassName("未知班级");
+        } else if (student.getClassName() == null) {
+            dto.setClassName("未分配");
         }
 
         return dto;
     }
 
     private void updateEntityFromDto(Student student, StudentDTO dto) {
-        BeanUtils.copyProperties(dto, student, "id", "password", "majorName");
+        // ✨【修改】忽略 className，因为它不是 Student 实体的直接字段了
+        BeanUtils.copyProperties(dto, student, "id", "password", "majorName", "className");
     }
 
 

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.student_management_system.mapper.ClassMapper">
+
+    <resultMap id="ClassWithMajorResultMap" type="com.example.student_management_system.model.Class">
+        <id property="id" column="class_id"/>
+        <result property="name" column="class_name"/>
+        <result property="majorId" column="major_id"/>
+        <result property="majorName" column="major_name"/>
+    </resultMap>
+
+    <select id="findAllWithMajor" resultMap="ClassWithMajorResultMap">
+        SELECT
+            c.id as class_id,
+            c.name as class_name,
+            c.major_id,
+            m.name as major_name
+        FROM classes c
+                 JOIN majors m ON c.major_id = m.id
+        ORDER BY m.name, c.name
+    </select>
+
+    <select id="findById" parameterType="long" resultType="com.example.student_management_system.model.Class">
+        SELECT * FROM classes WHERE id = #{id}
+    </select>
+
+    <select id="findByMajorId" parameterType="long" resultType="com.example.student_management_system.model.Class">
+        SELECT * FROM classes WHERE major_id = #{majorId} ORDER BY name
+    </select>
+
+    <insert id="insert" parameterType="com.example.student_management_system.model.Class" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO classes(name, major_id)
+        VALUES(#{name}, #{majorId})
+    </insert>
+
+    <update id="update" parameterType="com.example.student_management_system.model.Class">
+        UPDATE classes
+        SET name = #{name},
+            major_id = #{majorId}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        DELETE FROM classes WHERE id = #{id}
+    </delete>
+
+</mapper>

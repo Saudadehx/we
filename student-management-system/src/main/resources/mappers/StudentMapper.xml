@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.student_management_system.mapper.StudentMapper">
 
-    <resultMap id="StudentResultMap" type="Student">
+    <resultMap id="StudentResultMap" type="com.example.student_management_system.model.Student">
         <id property="id" column="id"/>
         <result property="password" column="password"/>
         <result property="name" column="name"/>
@@ -15,7 +15,6 @@
         <result property="email" column="email"/>
         <result property="studentId" column="student_id"/>
         <result property="college" column="college"/>
-        <result property="className" column="class_name"/>
         <result property="enrollmentDate" column="enrollment_date"/>
         <result property="studentStatus" column="student_status"/>
         <result property="gpa" column="gpa"/>
@@ -23,48 +22,69 @@
         <result property="majorId" column="major_id"/>
         <result property="academicYear" column="academic_year"/>
         <result property="semester" column="semester"/>
+        <result property="classId" column="class_id"/>
+        <result property="className" column="class_name"/>
+        <result property="majorName" column="major_name"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, password, name, gender, date_of_birth, ethnicity, native_place, political_status,
-      phone_number, email, student_id, college, class_name, enrollment_date, student_status, gpa, photo_url, major_id, academic_year, semester
+        s.id, s.password, s.name, s.gender, s.date_of_birth, s.ethnicity, s.native_place, s.political_status,
+        s.phone_number, s.email, s.student_id, s.college, s.enrollment_date, s.student_status, s.gpa, s.photo_url,
+        s.major_id, s.academic_year, s.semester,
+        s.class_id,       -- ✨【新增】选择 class_id
+        c.name as class_name, -- ✨【新增】通过JOIN获取班级名
+        m.name as major_name  -- ✨【新增】通过JOIN获取专业名
+    </sql>
+
+    <sql id="FROM_TABLES_WITH_JOINS">
+        FROM students s
+        LEFT JOIN majors m ON s.major_id = m.id
+        LEFT JOIN classes c ON s.class_id = c.id
     </sql>
 
     <select id="findAll" parameterType="map" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" /> FROM students
+        SELECT <include refid="Base_Column_List" />
+        <include refid="FROM_TABLES_WITH_JOINS"/>
         <where>
             <if test="majorId != null">
-                AND major_id = #{majorId}
+                AND s.major_id = #{majorId}
             </if>
             <if test="academicYear != null">
-                AND academic_year = #{academicYear}
+                AND s.academic_year = #{academicYear}
             </if>
         </where>
+        ORDER BY s.student_id
     </select>
 
     <select id="findById" parameterType="long" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" /> FROM students WHERE id = #{id}
+        SELECT <include refid="Base_Column_List" />
+        <include refid="FROM_TABLES_WITH_JOINS"/>
+        WHERE s.id = #{id}
     </select>
 
     <select id="findByIds" parameterType="java.util.List" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" /> FROM students
-        WHERE id IN
+        SELECT <include refid="Base_Column_List" />
+        <include refid="FROM_TABLES_WITH_JOINS"/>
+        WHERE s.id IN
         <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
             #{item}
         </foreach>
     </select>
+
     <select id="findByStudentId" parameterType="string" resultMap="StudentResultMap">
-        SELECT <include refid="Base_Column_List" /> FROM students WHERE student_id = #{studentId}
+        SELECT <include refid="Base_Column_List" />
+        <include refid="FROM_TABLES_WITH_JOINS"/>
+        WHERE s.student_id = #{studentId}
     </select>
 
-    <insert id="insert" parameterType="Student">
+    <insert id="insert" parameterType="com.example.student_management_system.model.Student">
         INSERT INTO students (student_id, password, name, gender, date_of_birth, ethnicity, native_place,
-                              political_status, phone_number, email, college, class_name, enrollment_date, student_status, gpa, photo_url, major_id, academic_year, semester)
+                              political_status, phone_number, email, college, class_id, enrollment_date, student_status, gpa, photo_url, major_id, academic_year, semester)
         VALUES (#{studentId}, #{password}, #{name}, #{gender}, #{dateOfBirth}, #{ethnicity}, #{nativePlace},
-                #{politicalStatus}, #{phoneNumber}, #{email}, #{college}, #{className}, #{enrollmentDate}, #{studentStatus}, #{gpa}, #{photoUrl}, #{majorId}, #{academicYear}, #{semester})
+                #{politicalStatus}, #{phoneNumber}, #{email}, #{college}, #{classId}, #{enrollmentDate}, #{studentStatus}, #{gpa}, #{photoUrl}, #{majorId}, #{academicYear}, #{semester})
     </insert>
 
-    <update id="update" parameterType="Student">
+    <update id="update" parameterType="com.example.student_management_system.model.Student">
         UPDATE students
         <set>
             <if test="studentId != null and studentId != ''">student_id = #{studentId},</if>
@@ -78,7 +98,7 @@
             <if test="phoneNumber != null">phone_number = #{phoneNumber},</if>
             <if test="email != null">email = #{email},</if>
             <if test="college != null">college = #{college},</if>
-            <if test="className != null and className != ''">class_name = #{className},</if>
+            <if test="classId != null">class_id = #{classId},</if>
             <if test="enrollmentDate != null">enrollment_date = #{enrollmentDate},</if>
             <if test="studentStatus != null">student_status = #{studentStatus},</if>
             <if test="gpa != null">gpa = #{gpa},</if>
@@ -93,11 +113,12 @@
     <delete id="deleteById" parameterType="long">
         DELETE FROM students WHERE id = #{id}
     </delete>
+
     <select id="findByMajorAndAcademicInfo" resultMap="StudentResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM students
-        WHERE major_id = #{majorId}
-        AND academic_year = #{academicYear}
-        AND semester = #{semester}
+        <include refid="FROM_TABLES_WITH_JOINS"/>
+        WHERE s.major_id = #{majorId}
+        AND s.academic_year = #{academicYear}
+        AND s.semester = #{semester}
     </select>
 </mapper>

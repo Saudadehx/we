@@ -90,6 +90,13 @@ export const enrollmentService = { // 学生选课和教师评分相关的服务
     createEnrollment: (data) => apiClient.post('/enrollments', data),
 };
 
+export const classService = {
+    getAll: () => apiClient.get('/classes'),
+    create: (classData) => apiClient.post('/classes', classData),
+    update: (id, classData) => apiClient.put(`/classes/${id}`, classData),
+    delete: (id) => apiClient.delete(`/classes/${id}`),
+};
+
 export const studentService = { // 学生相关的服务
     getStats: () => apiClient.get('/students/stats'),
     getAllStudents: () => apiClient.get('/students'),

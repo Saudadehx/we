@@ -226,8 +226,15 @@
                 <label class="item-label">班级</label>
                 <div class="item-content">
                   <span v-if="!isEditing" class="item-value">{{ student.className || '未分配' }}</span>
-                  <input v-else v-model="editableStudent.className" class="form-input" :class="{'is-invalid': errors.className}" :disabled="viewMode === 'student'" placeholder="请输入班级"/>
-                  <span v-if="errors.className" class="error-message">{{ errors.className }}</span>
+                  <template v-else>
+                    <select v-model="editableStudent.classId" class="form-select" :disabled="!editableStudent.majorId || filteredClasses.length === 0">
+                      <option :value="null">请先选择专业</option>
+                      <option v-for="cls in filteredClasses" :key="cls.id" :value="cls.id">
+                        {{ cls.name }}
+                      </option>
+                    </select>
+                    <p v-if="!editableStudent.majorId" class="field-hint">请先在上方选择一个专业，才能分配班级。</p>
+                  </template>
                 </div>
               </div>
 
@@ -320,7 +327,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { showNotification } from '@/services/notificationStore.js';
-import { majorService } from '@/services/apiService';
+import { classService, majorService } from '@/services/apiService'; // ✨ 引入 classService
 
 const props = defineProps({
   student: { type: Object, required: true },
@@ -329,7 +336,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['create-student', 'update-student', 'delete-student']);
-
+const allClasses = ref([]); // ✨ 新增：存储所有班级
 const majors = ref([]);
 const isEditing = ref(false);
 const editableStudent = ref({});
@@ -340,9 +347,15 @@ const isCreatingNew = computed(() => !props.student.id);
 onMounted(async () => {
   if (props.viewMode === 'admin') {
     try {
-      majors.value = await majorService.getAll();
+      // ✨ 同时获取专业和班级列表
+      const [majorsRes, classesRes] = await Promise.all([
+        majorService.getAll(),
+        classService.getAll()
+      ]);
+      majors.value = majorsRes;
+      allClasses.value = classesRes;
     } catch (error) {
-      showNotification('加载专业列表失败', 'error');
+      showNotification('加载专业或班级列表失败', 'error');
     }
   }
 });
@@ -370,6 +383,13 @@ const cancelEditing = () => {
   isEditing.value = false;
   errors.value = {};
 };
+
+const filteredClasses = computed(() => {
+  if (!editableStudent.value.majorId || !allClasses.value.length) {
+    return [];
+  }
+  return allClasses.value.filter(cls => cls.majorId === editableStudent.value.majorId);
+});
 
 const dateValidation = computed(() => {
   const today = new Date().toISOString().split('T')[0];

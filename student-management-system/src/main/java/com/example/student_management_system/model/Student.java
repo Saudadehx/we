@@ -35,28 +35,34 @@ public class Student implements UserDetails {
     @Size(min = 4, max = 20, message = "学号长度必须在4到20之间")
     private String studentId;
     private String college;
-    @NotBlank(message = "班级名称不能为空")
-    @Size(max = 100, message = "班级名称长度不能超过100")
+
+    // ✨【修改】不再是数据库的直接字段，而是用于接收JOIN查询结果
     private String className;
-    // private String major; // 【删除】移除此行
+
     private LocalDate enrollmentDate;
     private String studentStatus;
     private Double gpa;
     private String photoUrl;
+
     private Long majorId;
+    private Long classId; // ✨【新增】用于存储班级外键
+
     private Integer academicYear;
     private Integer semester;
+
+    // 用于连接查询时显示专业名称
+    private transient String majorName;
+
 
     // --- 构造函数 ---
     public Student() {
     }
 
-    public Student(String studentId, String name, String gender, LocalDate dateOfBirth, String className) {
+    public Student(String studentId, String name, String gender, LocalDate dateOfBirth) {
         this.studentId = studentId;
         this.name = name;
         this.gender = gender;
         this.dateOfBirth = dateOfBirth;
-        this.className = className;
     }
 
     // --- 手动实现的 Getters 和 Setters ---
@@ -84,8 +90,6 @@ public class Student implements UserDetails {
     public void setCollege(String college) { this.college = college; }
     public String getClassName() { return className; }
     public void setClassName(String className) { this.className = className; }
-    // public String getMajor() { return major; } // 【删除】移除此行
-    // public void setMajor(String major) { this.major = major; } // 【删除】移除此行
     public LocalDate getEnrollmentDate() { return enrollmentDate; }
     public void setEnrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; }
     public String getStudentStatus() { return studentStatus; }
@@ -100,6 +104,14 @@ public class Student implements UserDetails {
     public void setAcademicYear(Integer academicYear) { this.academicYear = academicYear; }
     public Integer getSemester() { return semester; }
     public void setSemester(Integer semester) { this.semester = semester; }
+
+    // ✨【新增】classId的Getter和Setter
+    public Long getClassId() { return classId; }
+    public void setClassId(Long classId) { this.classId = classId; }
+
+    // ✨【新增】majorName的Getter和Setter
+    public String getMajorName() { return majorName; }
+    public void setMajorName(String majorName) { this.majorName = majorName; }
 
     // --- UserDetails 接口实现 ---
     @Override
