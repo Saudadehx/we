@@ -104,6 +104,13 @@ export const classroomService = {
     delete: (id) => apiClient.delete(`/classrooms/${id}`),
 };
 
+export const schedulingService = {
+    /**
+     * 触发后台开始执行一键排课任务
+     */
+    generateSchedule: () => apiClient.post('/scheduling/generate'),
+};
+
 export const studentService = { // 学生相关的服务
     getStats: () => apiClient.get('/students/stats'),
     getAllStudents: () => apiClient.get('/students'),

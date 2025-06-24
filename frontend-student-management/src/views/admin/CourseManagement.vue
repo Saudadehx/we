@@ -60,6 +60,20 @@
         </div>
         <div class="panel-footer">
           <button @click="openCatalogManagementModal" class="footer-btn">管理课程基础目录</button>
+
+          <div class="autoschedule-section">
+            <button
+                @click="handleAutoSchedule"
+                :disabled="isScheduling"
+                class="footer-btn schedule-btn"
+            >
+              <div v-if="isScheduling" class="loading-spinner-small"></div>
+              <span>{{ isScheduling ? '正在智能排课中...' : '一键智能排课' }}</span>
+            </button>
+            <p v-if="isScheduling" class="schedule-status-text">
+              这可能需要几分钟时间，请稍候...
+            </p>
+          </div>
         </div>
       </div>
 
@@ -222,7 +236,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch, reactive } from 'vue';
-import { courseService, teacherService, majorService, classService, classroomService } from '@/services/apiService';
+import { courseService, teacherService, majorService, classService, classroomService, schedulingService } from '@/services/apiService'; //
 import { showNotification } from '@/services/notificationStore';
 import ScheduleGrid from '@/components/ScheduleGrid.vue';
 
@@ -238,6 +252,7 @@ const isCatalogsLoading = ref(false);
 const isSubmitting = ref(false);
 const hoveredOfferingId = ref(null);
 const filters = ref({ majorId: null, classId: null, searchQuery: '' });
+const isScheduling = ref(false);
 
 // 分页和搜索状态
 const currentPage = ref(1);
@@ -325,6 +340,26 @@ const handleApiAction = async (action, successMessage, refreshData = true) => {
     return false;
   } finally {
     isSubmitting.value = false;
+  }
+};
+
+const handleAutoSchedule = async () => {
+  if (!confirm('确定要启动一键智能排课吗？\n这将基于现有课程、教室和教师信息，尝试为所有未安排时间的课程自动分配时间与教室。\n此过程可能覆盖部分已有安排，请谨慎操作！')) {
+    return;
+  }
+
+  isScheduling.value = true;
+  showNotification('排课任务已启动，正在后台全力计算中...', 'success');
+
+  try {
+    const response = await schedulingService.generateSchedule();
+    // 后端是异步的，所以这里只是收到了“任务已接收”的确认
+    // 注意：我们不在此处将 isScheduling.value 设置为 false
+    // 一个更完整的方案需要轮询或WebSocket，但为了简化，我们引导用户手动刷新
+    showNotification('后端已成功接收排课请求！计算过程可能需要几分钟，完成后请刷新页面查看结果。', 'success');
+  } catch (error) {
+    showNotification(error.message || '启动排课任务失败', 'error');
+    isScheduling.value = false; // 只有在启动失败时，才重置状态
   }
 };
 
@@ -1300,5 +1335,51 @@ const getClassesByMajorId = (majorId) => classes.value.filter(c => c.majorId ===
 
 .catalog-close-btn:hover {
   background-color: #5a6268;
+}
+
+.autoschedule-section {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.schedule-btn {
+  background-color: #27ae60; /* 使用绿色以区分 */
+  color: white;
+  border-color: #27ae60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.schedule-btn:hover {
+  background-color: #2ecc71;
+  border-color: #2ecc71;
+}
+
+.schedule-btn:disabled {
+  background-color: #95a5a6;
+  border-color: #95a5a6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.schedule-status-text {
+  font-size: 0.85em;
+  color: var(--color-text-secondary);
+  margin-top: 8px;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
